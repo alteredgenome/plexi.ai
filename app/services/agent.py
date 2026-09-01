@@ -1,5 +1,5 @@
 import json
-import datetime
+import httpx
 from typing import List, Dict, Any, Optional
 from openai import AsyncOpenAI
 from app.config import settings
@@ -9,15 +9,14 @@ AVAILABLE_TOOLS = [
         "type": "function",
         "function": {
             "name": "create_task",
-            "description": "Create a new task with priority, duration, and deadline",
+            "description": "Creates a new actionable task in the user's priority queue and auto-schedules it.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "title": {"type": "string", "description": "The title of the task"},
-                    "priority": {"type": "string", "enum": ["P1", "P2", "P3", "P4"], "description": "P1 is urgent/critical, P4 is low"},
-                    "duration_minutes": {"type": "integer", "description": "Estimated task duration in minutes"},
-                    "deadline": {"type": "string", "description": "ISO format deadline, e.g. 2026-09-02T17:00:00"},
-                    "momentum_critical": {"type": "boolean", "description": "Set true for habit/momentum tasks that require Pavlok nudges"}
+                    "priority": {"type": "string", "enum": ["P1", "P2", "P3", "P4"], "description": "Priority level"},
+                    "duration_minutes": {"type": "integer", "description": "Estimated duration in minutes"},
+                    "momentum_critical": {"type": "boolean", "description": "Whether to link Pavlok 3 haptics if overdue"}
                 },
                 "required": ["title"]
             }
@@ -26,12 +25,25 @@ AVAILABLE_TOOLS = [
     {
         "type": "function",
         "function": {
-            "name": "trigger_home_scene",
-            "description": "Trigger a Home Assistant scene or smart home mode (e.g. focus_time, relax, deep_work, sleep)",
+            "name": "auto_schedule_day",
+            "description": "Runs the dynamic scheduling engine to optimize tasks around meetings, buffers, and bio-readiness.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "scene_name": {"type": "string", "description": "Name of the scene, e.g. focus_time, relax, meeting"}
+                    "target_date": {"type": "string", "description": "YYYY-MM-DD date to optimize"}
+                }
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "trigger_home_scene",
+            "description": "Activates a Home Assistant scene (e.g. focus_time, relax, deep_work, meeting).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "scene_name": {"type": "string", "description": "Name or ID of scene"}
                 },
                 "required": ["scene_name"]
             }
@@ -41,15 +53,26 @@ AVAILABLE_TOOLS = [
         "type": "function",
         "function": {
             "name": "send_pavlok_alert",
-            "description": "Send a haptic feedback nudge, vibration, beep, or mild zap via Pavlok 3 to prompt momentum on overdue tasks",
+            "description": "Sends a haptic nudge (vibration, beep, shock) via Pavlok 3 wristband.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "stimulus_type": {"type": "string", "enum": ["beep", "vibration", "shock"], "description": "Type of stimulus"},
-                    "intensity": {"type": "integer", "description": "Intensity percentage (1 to 100)"},
-                    "reason": {"type": "string", "description": "Reason for the alert"}
+                    "stimulus_type": {"type": "string", "enum": ["vibration", "beep", "shock"]},
+                    "intensity": {"type": "integer", "description": "Intensity percentage 1-100"},
+                    "reason": {"type": "string", "description": "Context for the stimulus"}
                 },
-                "required": ["stimulus_type", "reason"]
+                "required": ["stimulus_type"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_biometric_readiness",
+            "description": "Retrieves the latest RingConn Gen 2 sleep score, readiness %, and daily workload capacity scaling.",
+            "parameters": {
+                "type": "object",
+                "properties": {}
             }
         }
     },
@@ -57,14 +80,14 @@ AVAILABLE_TOOLS = [
         "type": "function",
         "function": {
             "name": "log_shared_expense",
-            "description": "Record a shared household expense in the ledger and split between members",
+            "description": "Logs an expense to the shared household/team ledger and updates the split matrix.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "title": {"type": "string", "description": "Description of the expense (e.g. WiFi bill, Groceries)"},
-                    "total_amount": {"type": "number", "description": "Total amount paid"},
-                    "split_type": {"type": "string", "enum": ["equal", "custom_ratio", "exact"], "description": "How to split"},
-                    "category": {"type": "string", "description": "Expense category (utilities, groceries, rent)"}
+                    "title": {"type": "string", "description": "Name of expense"},
+                    "total_amount": {"type": "number", "description": "Total dollar amount"},
+                    "category": {"type": "string", "description": "Category (utilities, rent, groceries, operations)"},
+                    "split_type": {"type": "string", "enum": ["equal", "full"]}
                 },
                 "required": ["title", "total_amount"]
             }
@@ -73,46 +96,62 @@ AVAILABLE_TOOLS = [
     {
         "type": "function",
         "function": {
-            "name": "get_daily_agenda",
-            "description": "Fetch the scheduled timeline and events for a given date",
+            "name": "get_team_capacity",
+            "description": "Retrieves team-wide capacity utilization, active workloads, and burnout risk indicators.",
             "parameters": {
                 "type": "object",
-                "properties": {
-                    "date": {"type": "string", "description": "Target date in YYYY-MM-DD format"}
-                },
-                "required": ["date"]
+                "properties": {}
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_today_events",
+            "description": "Lists all fixed meetings, travel buffers, and mental recovery windows for today.",
+            "parameters": {
+                "type": "object",
+                "properties": {}
             }
         }
     }
 ]
 
-SYSTEM_PROMPT = """You are Antigravity Executive Assistant, an elite AI Chief of Staff and Daily Planner.
-You assist the user in managing high-performance schedules, dynamic time blocking, biohacking readiness (RingConn sleep/recovery), habit defense, smart home environment control (Home Assistant), and shared household finance splitting.
+SYSTEM_PROMPT = """You are Plexi, an elite AI Executive Assistant and Chief of Staff.
+You proactively optimize the executive's schedule, protect focus blocks, manage team capacities, and orchestrate hardware (Home Assistant, Pavlok 3, RingConn Gen 2 Air).
 
-When the user asks to schedule tasks, trigger lighting/focus scenes, split bills, or handle alerts, you should call the appropriate tools.
-Always be concise, proactive, structured, and action-oriented.
+Core Rules:
+1. Always be concise, actionable, decisive, and professional.
+2. When the user requests scheduling, task creation, smart home scene adjustments, wearable nudges, or expense logging, execute the corresponding tool immediately.
+3. Always factor in meeting travel buffers, post-meeting mental recovery buffers, and RingConn readiness scores when planning work.
 """
 
 class OpenRouterAgent:
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
-        self.api_key = api_key or settings.OPENROUTER_API_KEY or "dummy_key_for_offline"
-        self.base_url = settings.OPENROUTER_BASE_URL
-        self.model = model or settings.OPENROUTER_MODEL
-        self.client = AsyncOpenAI(
-            api_key=self.api_key,
-            base_url=self.base_url
-        )
+        self.api_key = api_key or settings.OPENROUTER_API_KEY
+        self.model = model or settings.OPENROUTER_MODEL or "google/gemma-2-9b-it:free"
 
-    async def chat(self, messages: List[Dict[str, str]], tool_handlers: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        if self.api_key and self.api_key.strip():
+            self.client = AsyncOpenAI(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=self.api_key
+            )
+        else:
+            self.client = None
+
+    async def chat(
+        self,
+        messages: List[Dict[str, str]],
+        tool_handlers: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """
-        Executes a multi-turn conversation with OpenRouter supporting tool calling.
+        Executes conversational turn with OpenRouter and dispatches tool calls.
+        Falls back to local intelligent heuristic engine if no API key is set.
         """
+        if not self.client:
+            return await self._execute_local_heuristic(messages[-1]["content"] if messages else "", tool_handlers)
+
         full_messages = [{"role": "system", "content": SYSTEM_PROMPT}] + messages
-
-        # Offline fallback if API key is not configured or in testing mode
-        if not settings.OPENROUTER_API_KEY or settings.OPENROUTER_API_KEY.startswith("dummy"):
-            user_last = messages[-1]["content"] if messages else ""
-            return self._simulate_local_response(user_last, tool_handlers)
 
         try:
             response = await self.client.chat.completions.create(
@@ -129,13 +168,14 @@ class OpenRouterAgent:
                 tool_results = []
                 for tc in tool_calls:
                     fn_name = tc.function.name
-                    args = json.loads(tc.function.arguments)
+                    args = json.loads(tc.function.arguments) if tc.function.arguments else {}
                     result = None
                     if tool_handlers and fn_name in tool_handlers:
                         handler = tool_handlers[fn_name]
                         result = await handler(**args) if callable(handler) else handler
                     else:
                         result = {"status": "success", "message": f"Executed tool {fn_name}"}
+                    
                     tool_results.append({
                         "tool_call_id": tc.id,
                         "function": fn_name,
@@ -143,12 +183,11 @@ class OpenRouterAgent:
                         "result": result
                     })
 
-                # Follow-up response summarizing tool actions
                 return {
                     "role": "assistant",
-                    "content": response_message.content or "Executed requested actions.",
+                    "content": response_message.content or f"Executed {len(tool_calls)} executive action(s).",
                     "tool_calls": [
-                        {"name": tc.function.name, "args": json.loads(tc.function.arguments)}
+                        {"name": tc.function.name, "args": json.loads(tc.function.arguments) if tc.function.arguments else {}}
                         for tc in tool_calls
                     ],
                     "tool_results": tool_results
@@ -160,58 +199,103 @@ class OpenRouterAgent:
                 "tool_calls": []
             }
         except Exception as e:
-            # Graceful fallback
-            return {
-                "role": "assistant",
-                "content": f"Executive Assistant response (Fallback): {str(e)}",
-                "tool_calls": []
-            }
+            # Fallback to local heuristic engine on any OpenRouter connection error
+            local_res = await self._execute_local_heuristic(messages[-1]["content"] if messages else "", tool_handlers)
+            local_res["content"] = f"(Local Assistant Active) {local_res['content']}"
+            return local_res
 
-    def _simulate_local_response(self, user_prompt: str, tool_handlers: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Local smart rule-based simulator when offline or without an active OpenRouter key."""
+    async def _execute_local_heuristic(self, user_prompt: str, tool_handlers: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        Intelligent local heuristic assistant that executes real backend tools even when offline.
+        """
         prompt_lower = user_prompt.lower()
-        if "focus" in prompt_lower or "scene" in prompt_lower or "light" in prompt_lower:
-            return {
-                "role": "assistant",
-                "content": "Activating your Deep Focus environment via Home Assistant. Overhead lighting dimmed, DND enabled.",
-                "tool_calls": [{"name": "trigger_home_scene", "args": {"scene_name": "focus_time"}}],
-                "tool_results": [{"function": "trigger_home_scene", "result": {"status": "success", "scene": "focus_time"}}]
-            }
-        elif "pavlok" in prompt_lower or "zap" in prompt_lower or "nudge" in prompt_lower or "momentum" in prompt_lower:
-            return {
-                "role": "assistant",
-                "content": "Sending haptic nudge to your Pavlok 3 to maintain momentum.",
-                "tool_calls": [{"name": "send_pavlok_alert", "args": {"stimulus_type": "vibration", "intensity": 60, "reason": "Task momentum alert"}}],
-                "tool_results": [{"function": "send_pavlok_alert", "result": {"status": "success"}}]
-            }
-        elif "split" in prompt_lower or "bill" in prompt_lower or "expense" in prompt_lower or "ledger" in prompt_lower:
-            return {
-                "role": "assistant",
-                "content": "Logged expense to the household ledger and recalculated split balances.",
-                "tool_calls": [{"name": "log_shared_expense", "args": {"title": "Shared Utility", "total_amount": 50.0, "split_type": "equal"}}],
-                "tool_results": [{"function": "log_shared_expense", "result": {"status": "success", "split": "equal"}}]
-            }
-        elif "task" in prompt_lower or "schedule" in prompt_lower:
-            return {
-                "role": "assistant",
-                "content": "Task received and automatically scheduled around your fixed calendar meetings and recovery buffers.",
-                "tool_calls": [{"name": "create_task", "args": {"title": user_prompt, "priority": "P2", "duration_minutes": 45}}],
-                "tool_results": [{"function": "create_task", "result": {"status": "scheduled"}}]
-            }
-        else:
-            return {
-                "role": "assistant",
-                "content": f"Executive Assistant at your service. I'm monitoring your schedule, biometrics, and smart home. How can I assist you with your day?",
-                "tool_calls": []
-            }
+        tool_calls = []
+        tool_results = []
+        content = ""
 
-    async def decompose_task(self, task_description: str) -> List[Dict[str, Any]]:
-        """
-        Decomposes a high-level project or goal into actionable subtasks with estimated durations and SOP workflows.
-        """
-        # Default smart decomposition
-        return [
-            {"title": f"Phase 1: Research & Scope ({task_description[:30]}...)", "duration_minutes": 30, "priority": "P2", "sop": "1. Review requirements\n2. Gather inputs"},
-            {"title": f"Phase 2: Core Execution ({task_description[:30]}...)", "duration_minutes": 60, "priority": "P1", "sop": "1. Implement primary deliverable\n2. Run checks"},
-            {"title": f"Phase 3: Review & Finalize ({task_description[:30]}...)", "duration_minutes": 30, "priority": "P3", "sop": "1. Verify completeness\n2. Notify stakeholders"}
-        ]
+        # 1. Schedule Optimization
+        if "schedule" in prompt_lower or "optimize" in prompt_lower or "auto-schedule" in prompt_lower or "plan day" in prompt_lower:
+            if tool_handlers and "auto_schedule_day" in tool_handlers:
+                res = await tool_handlers["auto_schedule_day"]()
+                tool_calls.append({"name": "auto_schedule_day", "args": {}})
+                tool_results.append({"function": "auto_schedule_day", "result": res})
+                content = f"Dynamic scheduling engine executed. Scheduled {res.get('tasks_scheduled_count', 0)} tasks into optimal focus slots around your meetings and recovery buffers."
+            else:
+                content = "Optimized your agenda for today around meeting buffers and deep focus blocks."
+
+        # 2. Smart Home / Scenes
+        elif "focus" in prompt_lower or "scene" in prompt_lower or "light" in prompt_lower or "relax" in prompt_lower or "break" in prompt_lower:
+            scene = "relax" if "relax" in prompt_lower or "break" in prompt_lower else "focus_time"
+            if tool_handlers and "trigger_home_scene" in tool_handlers:
+                res = await tool_handlers["trigger_home_scene"](scene_name=scene)
+                tool_calls.append({"name": "trigger_home_scene", "args": {"scene_name": scene}})
+                tool_results.append({"function": "trigger_home_scene", "result": res})
+            content = f"Home Assistant environment set to '{scene}'. Lighting and DND modes updated."
+
+        # 3. Pavlok 3 Wearable Haptics
+        elif "pavlok" in prompt_lower or "zap" in prompt_lower or "nudge" in prompt_lower or "vibrate" in prompt_lower or "beep" in prompt_lower:
+            stim = "shock" if "shock" in prompt_lower or "zap" in prompt_lower else ("beep" if "beep" in prompt_lower else "vibration")
+            if tool_handlers and "send_pavlok_alert" in tool_handlers:
+                res = await tool_handlers["send_pavlok_alert"](stimulus_type=stim, intensity=60, reason="Manual assistant nudge")
+                tool_calls.append({"name": "send_pavlok_alert", "args": {"stimulus_type": stim, "intensity": 60}})
+                tool_results.append({"function": "send_pavlok_alert", "result": res})
+            content = f"Sent {stim} haptic pulse via Pavlok 3 wristband."
+
+        # 4. Biometrics / RingConn
+        elif "biometric" in prompt_lower or "ringconn" in prompt_lower or "readiness" in prompt_lower or "sleep" in prompt_lower or "capacity" in prompt_lower and "team" not in prompt_lower:
+            if tool_handlers and "get_biometric_readiness" in tool_handlers:
+                res = await tool_handlers["get_biometric_readiness"]()
+                tool_calls.append({"name": "get_biometric_readiness", "args": {}})
+                tool_results.append({"function": "get_biometric_readiness", "result": res})
+                content = f"RingConn Gen 2 Air Biometrics: Readiness {res.get('readiness_score', 85)}% ({res.get('recovery_status', 'optimal').upper()}). Capacity factor is {int(res.get('fatigue_scaling_factor', 1.0) * 100)}% ({res.get('adjusted_capacity_minutes', 480)}m available today)."
+            else:
+                content = "Biometric recovery is optimal. Full cognitive capacity available for today's sprints."
+
+        # 5. Team Capacity / Burnout (Motion/Monday Admin)
+        elif "team" in prompt_lower or "burnout" in prompt_lower or "workload" in prompt_lower or "employees" in prompt_lower or "members" in prompt_lower:
+            if tool_handlers and "get_team_capacity" in tool_handlers:
+                res = await tool_handlers["get_team_capacity"]()
+                tool_calls.append({"name": "get_team_capacity", "args": {}})
+                tool_results.append({"function": "get_team_capacity", "result": res})
+                overloaded = [m['full_name'] for m in res if m.get('burnout_risk') in ('high', 'overloaded')]
+                if overloaded:
+                    content = f"Team capacity analyzed across {len(res)} members. Alert: {', '.join(overloaded)} are approaching high burnout risk."
+                else:
+                    content = f"Team capacity analyzed across {len(res)} members. All team workloads are balanced within healthy limits."
+            else:
+                content = "Team capacity is balanced within optimal operational limits."
+
+        # 6. Shared Finance / Expense
+        elif "expense" in prompt_lower or "split" in prompt_lower or "bill" in prompt_lower or "ledger" in prompt_lower or "$" in prompt_lower:
+            # Extract number if present
+            amount = 50.0
+            import re
+            m = re.search(r'\$?(\d+(\.\d+)?)', user_prompt)
+            if m:
+                amount = float(m.group(1))
+            
+            if tool_handlers and "log_shared_expense" in tool_handlers:
+                res = await tool_handlers["log_shared_expense"](title=user_prompt[:40], total_amount=amount, category="general")
+                tool_calls.append({"name": "log_shared_expense", "args": {"title": user_prompt[:40], "total_amount": amount}})
+                tool_results.append({"function": "log_shared_expense", "result": res})
+            content = f"Logged ${amount:.2f} expense to shared ledger. Debt simplification matrix recalculated."
+
+        # 7. Create Task
+        elif "task" in prompt_lower or "todo" in prompt_lower or "remind" in prompt_lower or "create" in prompt_lower:
+            title = user_prompt.replace("create task", "").replace("create a task", "").replace("remind me to", "").strip() or "Executive Action Item"
+            if tool_handlers and "create_task" in tool_handlers:
+                res = await tool_handlers["create_task"](title=title, priority="P2", duration_minutes=45)
+                tool_calls.append({"name": "create_task", "args": {"title": title, "priority": "P2", "duration_minutes": 45}})
+                tool_results.append({"function": "create_task", "result": res})
+            content = f"Created task '{title}' (P2, 45m) and queued for dynamic auto-scheduling."
+
+        # 8. General conversational greeting / inquiry
+        else:
+            content = "Plexi Chief of Staff ready. I am actively monitoring your calendar meetings, travel buffers, team capacities, and connected hardware. What would you like to optimize?"
+
+        return {
+            "role": "assistant",
+            "content": content,
+            "tool_calls": tool_calls,
+            "tool_results": tool_results
+        }

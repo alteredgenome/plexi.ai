@@ -9,6 +9,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   await checkSetupOrAuth();
 });
 
+function formatErrorMessage(err) {
+  if (!err) return "Unknown error occurred.";
+  if (typeof err === "string") return err;
+  if (typeof err.detail === "string") return err.detail;
+  if (Array.isArray(err.detail) && err.detail.length > 0) {
+    const d = err.detail[0];
+    if (typeof d === "string") return d;
+    return d.msg || d.message || JSON.stringify(d);
+  }
+  if (err.message) return err.message;
+  return JSON.stringify(err);
+}
+
 function showToast(msg) {
   const toast = document.getElementById("toast");
   if (!toast) return;
@@ -132,14 +145,8 @@ async function submitSetupWizard() {
     });
 
     if (!resp.ok) {
-      const err = await resp.json();
-      let errorMsg = "Setup initialization failed.";
-      if (typeof err.detail === "string") {
-        errorMsg = err.detail;
-      } else if (Array.isArray(err.detail) && err.detail.length > 0) {
-        errorMsg = err.detail[0].msg || err.detail[0].message || JSON.stringify(err.detail[0]);
-      }
-      showToast(`Error: ${errorMsg}`);
+      const err = await resp.json().catch(() => ({ detail: "Setup error" }));
+      showToast(`Error: ${formatErrorMessage(err)}`);
       return;
     }
 
@@ -366,8 +373,8 @@ async function submitFeedSync() {
     });
 
     if (!resp.ok) {
-      const err = await resp.json();
-      showToast(`Sync error: ${err.detail || 'Failed to sync feed'}`);
+      const err = await resp.json().catch(() => ({ detail: 'Failed to sync feed' }));
+      showToast(`Sync error: ${formatErrorMessage(err)}`);
       return;
     }
 
@@ -403,8 +410,8 @@ async function submitICSImport() {
     });
 
     if (!resp.ok) {
-      const err = await resp.json();
-      showToast(`Import error: ${err.detail || 'Failed to import'}`);
+      const err = await resp.json().catch(() => ({ detail: 'Failed to import' }));
+      showToast(`Import error: ${formatErrorMessage(err)}`);
       return;
     }
 
@@ -621,7 +628,8 @@ async function submitHAConfig() {
       closeModal("modal-ha-config");
       showToast("Home Assistant linked successfully!");
     } else {
-      showToast("Failed to save Home Assistant config.");
+      const err = await resp.json().catch(() => ({ detail: "Failed to save HA config" }));
+      showToast(`Error: ${formatErrorMessage(err)}`);
     }
   } catch (e) {
     showToast("Network error linking Home Assistant.");
@@ -662,7 +670,8 @@ async function submitPavlokConfig() {
       showToast("Pavlok 3 configured successfully!");
       document.getElementById("pavlok-status-text").innerText = `${stim.toUpperCase()} (${intensity}%)`;
     } else {
-      showToast("Failed to save Pavlok config.");
+      const err = await resp.json().catch(() => ({ detail: "Failed to save Pavlok config" }));
+      showToast(`Error: ${formatErrorMessage(err)}`);
     }
   } catch (e) {
     showToast("Network error linking Pavlok.");
@@ -707,7 +716,8 @@ async function submitRingConnConfig() {
       showToast("RingConn Gen 2 Air linked!");
       await triggerRingConnSync();
     } else {
-      showToast("Failed to save RingConn config.");
+      const err = await resp.json().catch(() => ({ detail: "Failed to save RingConn config" }));
+      showToast(`Error: ${formatErrorMessage(err)}`);
     }
   } catch (e) {
     showToast("Network error linking RingConn.");
@@ -921,13 +931,21 @@ async function loadAdminData() {
 }
 
 async function submitAddUser() {
-  const name = document.getElementById("new-user-name").value.trim();
-  const email = document.getElementById("new-user-email").value.trim();
-  const pass = document.getElementById("new-user-pass").value;
-  const role = document.getElementById("new-user-role").value;
-  const dept = document.getElementById("new-user-dept").value.trim();
-  const cap = parseInt(document.getElementById("new-user-cap").value) || 480;
-  const tz = document.getElementById("new-user-tz").value.trim() || "America/New_York";
+  const nameInput = document.getElementById("new-user-name");
+  const emailInput = document.getElementById("new-user-email");
+  const passInput = document.getElementById("new-user-pass");
+  const roleInput = document.getElementById("new-user-role");
+  const deptInput = document.getElementById("new-user-dept");
+  const capInput = document.getElementById("new-user-cap");
+  const tzInput = document.getElementById("new-user-tz");
+
+  const name = nameInput ? nameInput.value.trim() : "";
+  const email = emailInput ? emailInput.value.trim() : "";
+  const pass = passInput ? passInput.value : "";
+  const role = roleInput ? roleInput.value : "member";
+  const dept = deptInput ? deptInput.value.trim() : "Operations";
+  const cap = capInput ? (parseInt(capInput.value) || 480) : 480;
+  const tz = tzInput ? tzInput.value.trim() : "America/New_York";
 
   if (!name || !email || !pass) {
     showToast("Please provide name, email, and password.");
@@ -950,14 +968,16 @@ async function submitAddUser() {
         password: pass,
         role: role,
         department: dept || "Operations",
+        work_start_hour: 9,
+        work_end_hour: 18,
         daily_capacity_minutes: cap,
-        timezone: tz
+        timezone: tz || "America/New_York"
       })
     });
 
     if (!resp.ok) {
-      const err = await resp.json();
-      showToast(`Error: ${err.detail || 'Failed to create user'}`);
+      const err = await resp.json().catch(() => ({ detail: "Failed to create user" }));
+      showToast(`Error: ${formatErrorMessage(err)}`);
       return;
     }
 
@@ -970,10 +990,15 @@ async function submitAddUser() {
 }
 
 async function submitAssignDevice() {
-  const userId = parseInt(document.getElementById("assign-device-user").value);
-  const provider = document.getElementById("assign-device-provider").value;
-  const label = document.getElementById("assign-device-label").value.trim();
-  const key = document.getElementById("assign-device-key").value.trim();
+  const userSelect = document.getElementById("assign-device-user");
+  const provSelect = document.getElementById("assign-device-provider");
+  const labelInput = document.getElementById("assign-device-label");
+  const keyInput = document.getElementById("assign-device-key");
+
+  const userId = userSelect ? parseInt(userSelect.value) : 0;
+  const provider = provSelect ? provSelect.value : "pavlok";
+  const label = labelInput ? labelInput.value.trim() : "";
+  const key = keyInput ? keyInput.value.trim() : "";
 
   if (!userId || !key) {
     showToast("Please select user and enter device API key / token.");
@@ -999,8 +1024,8 @@ async function submitAssignDevice() {
     });
 
     if (!resp.ok) {
-      const err = await resp.json();
-      showToast(`Error: ${err.detail || 'Failed to assign device'}`);
+      const err = await resp.json().catch(() => ({ detail: "Failed to assign device" }));
+      showToast(`Error: ${formatErrorMessage(err)}`);
       return;
     }
 
@@ -1030,7 +1055,7 @@ async function testUserHardware(userId, provider) {
     if (resp.ok) {
       showToast(`✔ ${provider.toUpperCase()} test signal delivered!`);
     } else {
-      showToast(`Failed: ${data.detail || 'Test error'}`);
+      showToast(`Failed: ${formatErrorMessage(data)}`);
     }
   } catch (e) {
     showToast("Test request failed.");
@@ -1125,7 +1150,7 @@ async function sendChatMessage() {
       const toolBox = document.createElement("div");
       toolBox.className = "bg-slate-950/70 p-2 rounded border border-slate-800 mono text-[11px] text-emerald-400 space-y-1";
       data.tool_calls.forEach(tc => {
-        toolBox.innerHTML += `<div>⚙️ Tool: <span class="font-bold">${tc.name}</span>(${JSON.stringify(tc.args)})</div>`;
+        toolBox.innerHTML += `<div>⚙️ Executed: <span class="font-bold">${tc.name}</span>(${JSON.stringify(tc.args)})</div>`;
       });
       assistantDiv.appendChild(toolBox);
     }
