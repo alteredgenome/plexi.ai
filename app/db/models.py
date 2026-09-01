@@ -63,6 +63,11 @@ class Calendar(Base):
     color = Column(String(32), default="#4F46E5")
     visibility = Column(String(32), default="full") # full, private_masked, public
     is_default = Column(Boolean, default=False)
+    
+    # External Feed Syncing (Google Calendar, Outlook, iCloud)
+    is_synced = Column(Boolean, default=False)
+    feed_url = Column(String(1024), nullable=True)
+    last_synced_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     user = relationship("User", back_populates="calendars")
@@ -87,6 +92,7 @@ class Event(Base):
     
     is_recurring = Column(Boolean, default=False)
     rrule = Column(String(255), nullable=True)
+    external_uid = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     calendar = relationship("Calendar", back_populates="events")
@@ -99,22 +105,18 @@ class Task(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    priority = Column(String(8), default="P3") # P1, P2, P3, P4
-    status = Column(String(32), default="todo") # todo, in_progress, completed
+    priority = Column(String(8), default="P3")
+    status = Column(String(32), default="todo")
     duration_minutes = Column(Integer, default=30)
     deadline = Column(DateTime, nullable=True)
     
-    # Auto-scheduling state
     auto_schedule = Column(Boolean, default=True)
     scheduled_start = Column(DateTime, nullable=True, index=True)
     scheduled_end = Column(DateTime, nullable=True, index=True)
     is_completed = Column(Boolean, default=False)
     
-    # Subtasks & SOPs
     parent_task_id = Column(Integer, ForeignKey("tasks.id"), nullable=True)
     sop_template = Column(String(255), nullable=True)
-    
-    # Pavlok haptic momentum flag
     momentum_critical = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
@@ -129,9 +131,9 @@ class Habit(Base):
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     duration_minutes = Column(Integer, default=30)
-    target_time_window = Column(String(32), default="morning") # morning, afternoon, evening, anytime
+    target_time_window = Column(String(32), default="morning")
     days_of_week = Column(String(64), default="mon,tue,wed,thu,fri,sat,sun")
-    defense_strictness = Column(String(32), default="protected") # flexible, protected, lock
+    defense_strictness = Column(String(32), default="protected")
     last_completed_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
@@ -142,7 +144,7 @@ class BiometricLog(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    date = Column(String(10), nullable=False) # YYYY-MM-DD
+    date = Column(String(10), nullable=False)
     sleep_score = Column(Float, nullable=True)
     readiness_score = Column(Float, nullable=True)
     hrv = Column(Float, nullable=True)
@@ -165,7 +167,7 @@ class LedgerItem(Base):
     category = Column(String(64), default="general")
     total_amount = Column(Float, nullable=False)
     currency = Column(String(8), default="USD")
-    split_type = Column(String(32), default="equal") # equal, custom_ratio, exact
+    split_type = Column(String(32), default="equal")
     shares_json = Column(JSON, nullable=True)
     is_settled = Column(Boolean, default=False)
     date = Column(DateTime, default=datetime.datetime.utcnow)
@@ -180,7 +182,7 @@ class IntegrationCredential(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    provider = Column(String(64), nullable=False) # home_assistant, pavlok, ringconn, pixel_watch
+    provider = Column(String(64), nullable=False)
     credentials_json = Column(JSON, nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)

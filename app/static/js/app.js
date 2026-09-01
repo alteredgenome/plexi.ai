@@ -27,9 +27,9 @@ async function checkSetupOrAuth() {
     const status = await resp.json();
 
     if (!status.is_setup_completed) {
-      // Show First-Run Setup Wizard
+      // Show Streamlined First-Run Setup Wizard
       const overlay = document.getElementById("setup-wizard-overlay");
-      overlay.classList.remove("hidden");
+      if (overlay) overlay.classList.remove("hidden");
       return;
     }
 
@@ -43,13 +43,13 @@ async function checkSetupOrAuth() {
   }
 }
 
-// Setup Wizard Stepper
+// Setup Wizard Stepper (2 Simple Steps)
 function goToWizardStep(stepNum) {
   document.querySelectorAll(".wizard-step").forEach(el => el.classList.add("hidden"));
   const targetStep = document.getElementById(`wizard-step-${stepNum}`);
   if (targetStep) targetStep.classList.remove("hidden");
 
-  for (let i = 1; i <= 3; i++) {
+  for (let i = 1; i <= 2; i++) {
     const ind = document.getElementById(`step-ind-${i}`);
     if (!ind) continue;
     if (i === stepNum) {
@@ -79,10 +79,6 @@ async function submitSetupWizard() {
   const openrouterKey = document.getElementById("wiz-openrouter-key") ? document.getElementById("wiz-openrouter-key").value.trim() : "";
   const openrouterModel = document.getElementById("wiz-openrouter-model") ? document.getElementById("wiz-openrouter-model").value : "google/gemma-2-9b-it:free";
 
-  const haUrl = document.getElementById("wiz-ha-url") ? document.getElementById("wiz-ha-url").value.trim() : "";
-  const haToken = document.getElementById("wiz-ha-token") ? document.getElementById("wiz-ha-token").value.trim() : "";
-  const pavlokKey = document.getElementById("wiz-pavlok-key") ? document.getElementById("wiz-pavlok-key").value.trim() : "";
-
   if (!name || !email || !pass) {
     showToast("Please provide administrator name, email, and master password.");
     goToWizardStep(1);
@@ -102,10 +98,7 @@ async function submitSetupWizard() {
         work_start_hour: startH,
         work_end_hour: endH,
         openrouter_api_key: openrouterKey || null,
-        openrouter_model: openrouterModel || "google/gemma-2-9b-it:free",
-        home_assistant_url: haUrl || null,
-        home_assistant_token: haToken || null,
-        pavlok_api_key: pavlokKey || null
+        openrouter_model: openrouterModel || "google/gemma-2-9b-it:free"
       })
     });
 
@@ -136,7 +129,7 @@ async function submitSetupWizard() {
 }
 
 function promptLoginModal() {
-  const email = prompt("Plexi Master Login\nEnter email:") || "admin@plexi.local";
+  const email = prompt("Plexi Master Login\nEnter email:") || "admin@plexi.fyi";
   const pass = prompt("Enter master password:") || "";
   
   if (!pass) return;
@@ -259,7 +252,7 @@ async function loadAgenda() {
     }
 
     if (timelineItems.length === 0) {
-      container.innerHTML = `<div class="text-xs text-slate-500 py-4">No scheduled events yet. Click 'Auto-Schedule Day' to optimize.</div>`;
+      container.innerHTML = `<div class="text-xs text-slate-500 py-4">No scheduled events for today. Click 'Import / Sync' or 'Auto-Schedule Day' to optimize.</div>`;
       return;
     }
 
@@ -316,6 +309,84 @@ async function triggerAutoSchedule() {
   await loadProjects();
 }
 
+// Calendar Sync & Import Handlers
+function openSyncModal() { document.getElementById("modal-sync").classList.remove("hidden"); }
+function openImportModal() { document.getElementById("modal-import").classList.remove("hidden"); }
+
+async function submitFeedSync() {
+  const name = document.getElementById("sync-feed-name").value.trim();
+  const url = document.getElementById("sync-feed-url").value.trim();
+
+  if (!url) {
+    showToast("Please provide an iCal feed URL.");
+    return;
+  }
+
+  showToast("Fetching and syncing calendar feed...");
+  const headers = {
+    "Authorization": `Bearer ${currentToken}`,
+    "Content-Type": "application/json"
+  };
+
+  try {
+    const resp = await fetch("/api/v1/calendars/sync/feed", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ name: name || "Synced Calendar", feed_url: url })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      showToast(`Sync error: ${err.detail || 'Failed to sync feed'}`);
+      return;
+    }
+
+    const data = await resp.json();
+    closeModal("modal-sync");
+    showToast(`Successfully synced ${data.events_imported_count} events!`);
+    await loadAgenda();
+  } catch (e) {
+    showToast("Network error syncing feed.");
+  }
+}
+
+async function submitICSImport() {
+  const fileInput = document.getElementById("import-file-input");
+  const calName = document.getElementById("import-cal-name").value.trim();
+
+  if (!fileInput.files || fileInput.files.length === 0) {
+    showToast("Please select a .ics file.");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("file", fileInput.files[0]);
+  if (calName) formData.append("calendar_name", calName);
+
+  showToast("Uploading and parsing .ics file...");
+
+  try {
+    const resp = await fetch("/api/v1/calendars/import/ics", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${currentToken}` },
+      body: formData
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      showToast(`Import error: ${err.detail || 'Failed to import'}`);
+      return;
+    }
+
+    const data = await resp.json();
+    closeModal("modal-import");
+    showToast(`Successfully imported ${data.events_imported_count} events!`);
+    await loadAgenda();
+  } catch (e) {
+    showToast("Failed to upload .ics file.");
+  }
+}
+
 // TAB 2: Projects & Kanban
 async function loadProjects() {
   if (!currentToken) return;
@@ -341,7 +412,7 @@ async function loadProjects() {
       card.className = "p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition space-y-2";
       
       const momentumBadge = t.momentum_critical 
-        ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800">⚡ Pavlok Linked</span>`
+        ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800">⚡ Pavlok</span>`
         : "";
 
       const statusBadge = t.is_completed 
@@ -471,7 +542,7 @@ async function settleItem(itemId) {
   await loadFinance();
 }
 
-// TAB 4: Biometrics & RingConn
+// TAB 4: Biometrics & Integrations
 async function loadBiometrics() {
   if (!currentToken) return;
   const headers = { "Authorization": `Bearer ${currentToken}` };
@@ -518,7 +589,6 @@ async function submitBiometrics() {
   await loadBiometrics();
 }
 
-// Smart Home & Pavlok Triggers
 async function triggerHAScene(sceneId) {
   const headers = {
     "Authorization": `Bearer ${currentToken}`,
