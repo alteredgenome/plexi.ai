@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Plexi | Enterprise AI Executive Assistant & Daily Planner</title>
+  <title>Plexi | Enterprise AI Executive Assistant & Dynamic Daily Planner</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons -->
@@ -148,7 +148,7 @@
         </button>
         <button onclick="switchTab('integrations')" id="tab-integrations" class="nav-tab px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800">
           <i data-lucide="sliders" class="w-4 h-4"></i>
-          <span>Sync & Calendars</span>
+          <span>Hardware & Integrations</span>
         </button>
         <!-- Enterprise Admin Tab -->
         <button onclick="switchTab('admin')" id="tab-admin" class="nav-tab px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 text-amber-400/80 hover:text-amber-300 hover:bg-slate-800">
@@ -348,21 +348,118 @@
       </div>
     </section>
 
-    <!-- TAB 4: SYNC & INTEGRATIONS -->
+    <!-- TAB 4: HARDWARE & INTEGRATIONS HUB -->
     <section id="pane-integrations" class="tab-pane hidden space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xl font-bold text-slate-100">Hardware & Integration Management</h2>
+          <p class="text-xs text-slate-400">Configure your personal wearables, smart home automations, and calendar feeds</p>
+        </div>
+      </div>
+
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         
+        <!-- Pavlok 3 Shock Clock Card -->
         <div class="glass rounded-3xl p-6 border border-slate-800 space-y-4">
-          <div class="flex items-center space-x-3">
-            <div class="w-10 h-10 rounded-xl bg-sky-950 border border-sky-500/30 flex items-center justify-center text-sky-400">
-              <i data-lucide="calendar" class="w-5 h-5"></i>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+              <div class="w-10 h-10 rounded-xl bg-amber-950 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                <i data-lucide="zap" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <h3 class="font-semibold text-slate-100">Pavlok 3 Haptic Wristband</h3>
+                <p class="text-xs text-slate-400">Haptic stimulus for overdue task momentum</p>
+              </div>
             </div>
-            <div>
-              <h3 class="font-semibold text-slate-100">Calendar Sync & Import</h3>
-              <p class="text-xs text-slate-400">Google Calendar, Outlook & .ics files</p>
+            <button onclick="openPavlokConfigModal()" class="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold transition">
+              Configure Pavlok
+            </button>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-center justify-between">
+            <div class="text-xs text-slate-300">
+              <div>Default: <b id="pavlok-status-text">Vibration (50%)</b></div>
+              <div class="text-[11px] text-slate-500">Auto-triggers on momentum-critical overdue tasks</div>
+            </div>
+            <div class="flex space-x-2">
+              <button onclick="sendPavlokNudge('vibration', 50)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-medium border border-amber-500/20">
+                Test Vibrate
+              </button>
+              <button onclick="sendPavlokNudge('beep', 70)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-medium border border-amber-500/20">
+                Test Beep
+              </button>
             </div>
           </div>
-          <div class="space-y-3 pt-2">
+        </div>
+
+        <!-- RingConn Gen 2 Air Card -->
+        <div class="glass rounded-3xl p-6 border border-slate-800 space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+              <div class="w-10 h-10 rounded-xl bg-violet-950 border border-violet-500/30 flex items-center justify-center text-violet-400">
+                <i data-lucide="activity" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <h3 class="font-semibold text-slate-100">RingConn Gen 2 Air</h3>
+                <p class="text-xs text-slate-400">Biometric readiness & sleep capacity engine</p>
+              </div>
+            </div>
+            <button onclick="openRingConnConfigModal()" class="px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold transition">
+              Configure RingConn
+            </button>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-center justify-between">
+            <div class="text-xs text-slate-300">
+              <div>Capacity Factor: <b id="ringconn-status-text">Active (Dynamic Scaling)</b></div>
+              <div class="text-[11px] text-slate-500">Recalibrates schedule based on sleep score & HRV</div>
+            </div>
+            <button onclick="triggerRingConnSync()" class="px-3 py-1.5 rounded-lg bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 text-xs font-semibold border border-violet-500/30">
+              Sync Biometrics Now
+            </button>
+          </div>
+        </div>
+
+        <!-- Home Assistant Office Card -->
+        <div class="glass rounded-3xl p-6 border border-slate-800 space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+              <div class="w-10 h-10 rounded-xl bg-blue-950 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                <i data-lucide="home" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <h3 class="font-semibold text-slate-100">Home Assistant Hub</h3>
+                <p class="text-xs text-slate-400">Office lighting, scenes & Assist Voice satellite</p>
+              </div>
+            </div>
+            <button onclick="openHAConfigModal()" class="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition">
+              Configure Home Assistant
+            </button>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="triggerHAScene('focus_time')" class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-indigo-500/50 text-left text-xs font-medium">
+              <i data-lucide="focus" class="w-4 h-4 text-indigo-400 mb-1"></i>
+              <div>Deep Focus Scene</div>
+            </button>
+            <button onclick="triggerHAScene('relax')" class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-emerald-500/50 text-left text-xs font-medium">
+              <i data-lucide="coffee" class="w-4 h-4 text-emerald-400 mb-1"></i>
+              <div>Break & Relax Scene</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Calendar Sync & Feeds Card -->
+        <div class="glass rounded-3xl p-6 border border-slate-800 space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+              <div class="w-10 h-10 rounded-xl bg-sky-950 border border-sky-500/30 flex items-center justify-center text-sky-400">
+                <i data-lucide="calendar" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <h3 class="font-semibold text-slate-100">External Calendar Sync</h3>
+                <p class="text-xs text-slate-400">Google Calendar, Outlook & .ics feeds</p>
+              </div>
+            </div>
+          </div>
+          <div class="space-y-2">
             <button onclick="openSyncModal()" class="w-full py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition flex items-center justify-center space-x-2">
               <i data-lucide="link" class="w-4 h-4"></i>
               <span>Add Google / Outlook iCal URL</span>
@@ -374,78 +471,13 @@
           </div>
         </div>
 
-        <div class="glass rounded-3xl p-6 border border-slate-800 space-y-4">
-          <div class="flex items-center space-x-3">
-            <div class="w-10 h-10 rounded-xl bg-blue-950 border border-blue-500/30 flex items-center justify-center text-blue-400">
-              <i data-lucide="home" class="w-5 h-5"></i>
-            </div>
-            <div>
-              <h3 class="font-semibold text-slate-100">Home Assistant (Optional)</h3>
-              <p class="text-xs text-slate-400">Automate lighting scenes & DND modes</p>
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-2 pt-2">
-            <button onclick="triggerHAScene('focus_time')" class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-indigo-500/50 text-left text-xs font-medium">
-              <i data-lucide="focus" class="w-4 h-4 text-indigo-400 mb-1"></i>
-              <div>Deep Focus</div>
-            </button>
-            <button onclick="triggerHAScene('relax')" class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-emerald-500/50 text-left text-xs font-medium">
-              <i data-lucide="coffee" class="w-4 h-4 text-emerald-400 mb-1"></i>
-              <div>Break Mode</div>
-            </button>
-          </div>
-        </div>
-
-        <div class="glass rounded-3xl p-6 border border-slate-800 space-y-4">
-          <div class="flex items-center space-x-3">
-            <div class="w-10 h-10 rounded-xl bg-amber-950 border border-amber-500/30 flex items-center justify-center text-amber-400">
-              <i data-lucide="zap" class="w-5 h-5"></i>
-            </div>
-            <div>
-              <h3 class="font-semibold text-slate-100">Pavlok 3 Haptic (Optional)</h3>
-              <p class="text-xs text-slate-400">Haptic alerts for critical momentum tasks</p>
-            </div>
-          </div>
-          <div class="flex space-x-2 pt-2">
-            <button onclick="sendPavlokNudge('vibration', 50)" class="flex-1 py-2 rounded-xl bg-amber-600/20 text-amber-300 border border-amber-500/30 text-xs font-medium">
-              Test Vibrate
-            </button>
-            <button onclick="sendPavlokNudge('beep', 70)" class="flex-1 py-2 rounded-xl bg-amber-600/20 text-amber-300 border border-amber-500/30 text-xs font-medium">
-              Test Beep
-            </button>
-          </div>
-        </div>
-
-        <div class="glass rounded-3xl p-6 border border-slate-800 space-y-4">
-          <div class="flex items-center space-x-3">
-            <div class="w-10 h-10 rounded-xl bg-violet-950 border border-violet-500/30 flex items-center justify-center text-violet-400">
-              <i data-lucide="activity" class="w-5 h-5"></i>
-            </div>
-            <div>
-              <h3 class="font-semibold text-slate-100">RingConn Recovery (Optional)</h3>
-              <p class="text-xs text-slate-400">Sleep & readiness capacity scaling</p>
-            </div>
-          </div>
-          <div class="space-y-2 pt-1 text-xs">
-            <div class="flex justify-between">
-              <span>Sleep Score: <b id="bio-sleep-val">85</b></span>
-              <span>Readiness: <b id="bio-readiness-val">90</b></span>
-            </div>
-            <input id="bio-sleep-input" type="range" min="30" max="100" value="85" class="w-full accent-indigo-500" oninput="updateBioPreview()">
-            <input id="bio-readiness-input" type="range" min="30" max="100" value="90" class="w-full accent-violet-500" oninput="updateBioPreview()">
-            <button onclick="submitBiometrics()" class="w-full py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold transition mt-2">
-              Ingest & Recalibrate Capacity
-            </button>
-          </div>
-        </div>
-
       </div>
     </section>
 
     <!-- TAB 5: ENTERPRISE TEAM & SYSTEM ADMIN CONSOLE -->
     <section id="pane-admin" class="tab-pane hidden space-y-6">
       
-      <!-- Admin Top Metrics / Capacity Overview -->
+      <!-- Admin Top Metrics -->
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div class="glass rounded-2xl p-4 border border-slate-800">
           <div class="text-xs text-slate-400">Total Team Members</div>
@@ -468,7 +500,7 @@
             <h3 class="text-lg font-bold text-slate-100">Enterprise User Directory & Provisioning</h3>
             <p class="text-xs text-slate-400">Manage user accounts, roles, daily workload capacities, and credentials</p>
           </div>
-          <button onclick="openAddUserModal()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center space-x-2 shadow transition">
+          <button onclick="openAddUserModal()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center space-x-2 shadow transition cursor-pointer">
             <i data-lucide="user-plus" class="w-4 h-4"></i>
             <span>+ Provision Member</span>
           </button>
@@ -502,15 +534,13 @@
             </h3>
             <p class="text-xs text-slate-400">Assign Pavlok 3 haptic wristbands, RingConn Gen 2 rings, and Home Assistant endpoints per employee</p>
           </div>
-          <button onclick="openAssignDeviceModal()" class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold flex items-center space-x-2 transition shadow">
+          <button onclick="openAssignDeviceModal()" class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold flex items-center space-x-2 transition shadow cursor-pointer">
             <i data-lucide="cpu" class="w-4 h-4"></i>
             <span>Assign Hardware to User</span>
           </button>
         </div>
 
-        <div id="admin-device-matrix" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
-          <!-- Device cards dynamically injected -->
-        </div>
+        <div id="admin-device-matrix" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2"></div>
       </div>
 
       <!-- Team Capacity & Burnout Heatmap -->
@@ -563,144 +593,302 @@
     </div>
   </div>
 
+  <!-- ================= INTERACTIVE MODALS ================= -->
+
   <!-- Modal: Provision New Member -->
-  <div id="modal-add-user" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-    <div class="glass max-w-md w-full rounded-2xl p-6 border border-slate-800 space-y-4">
-      <h3 class="font-bold text-lg text-slate-100">Provision Team Member</h3>
+  <div id="modal-add-user" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
+    <div class="glass max-w-md w-full rounded-3xl p-6 border border-slate-800 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+        <h3 class="font-bold text-lg text-slate-100 flex items-center space-x-2">
+          <i data-lucide="user-plus" class="w-5 h-5 text-indigo-400"></i>
+          <span>Provision Team Member</span>
+        </h3>
+        <button onclick="closeModal('modal-add-user')" class="text-slate-400 hover:text-slate-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
       <div class="space-y-3">
         <div>
-          <label class="text-xs text-slate-400">Full Name</label>
-          <input id="new-user-name" type="text" placeholder="e.g. Alex Mercer" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+          <label class="text-xs text-slate-300 font-semibold">Full Name</label>
+          <input id="new-user-name" type="text" placeholder="e.g. Alex Mercer" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
         </div>
         <div>
-          <label class="text-xs text-slate-400">Email Address</label>
-          <input id="new-user-email" type="text" placeholder="alex@company.com" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+          <label class="text-xs text-slate-300 font-semibold">Email Address</label>
+          <input id="new-user-email" type="text" placeholder="alex@company.com" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
         </div>
         <div>
-          <label class="text-xs text-slate-400">Initial Password</label>
-          <input id="new-user-pass" type="password" placeholder="••••••••••••" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+          <label class="text-xs text-slate-300 font-semibold">Initial Password</label>
+          <input id="new-user-pass" type="password" placeholder="••••••••••••" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="text-xs text-slate-400">Role</label>
-            <select id="new-user-role" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+            <label class="text-xs text-slate-300 font-semibold">Role</label>
+            <select id="new-user-role" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
               <option value="member">Member</option>
               <option value="manager">Manager</option>
               <option value="admin">Administrator</option>
             </select>
           </div>
           <div>
-            <label class="text-xs text-slate-400">Department</label>
-            <input id="new-user-dept" type="text" value="Engineering" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+            <label class="text-xs text-slate-300 font-semibold">Department</label>
+            <input id="new-user-dept" type="text" value="Engineering" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
           </div>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="text-xs text-slate-400">Daily Capacity (Mins)</label>
-            <input id="new-user-cap" type="number" value="480" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+            <label class="text-xs text-slate-300 font-semibold">Daily Capacity (Mins)</label>
+            <input id="new-user-cap" type="number" value="480" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
           </div>
           <div>
-            <label class="text-xs text-slate-400">Timezone</label>
-            <input id="new-user-tz" type="text" value="America/New_York" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+            <label class="text-xs text-slate-300 font-semibold">Timezone</label>
+            <input id="new-user-tz" type="text" value="America/New_York" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
           </div>
         </div>
       </div>
       <div class="flex justify-end space-x-3 pt-3">
         <button onclick="closeModal('modal-add-user')" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-sm">Cancel</button>
-        <button onclick="submitAddUser()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold">Provision Member</button>
+        <button onclick="submitAddUser()" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold shadow">Provision Member</button>
       </div>
     </div>
   </div>
 
-  <!-- Modal: Assign Hardware / Wearable -->
-  <div id="modal-assign-device" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-    <div class="glass max-w-md w-full rounded-2xl p-6 border border-slate-800 space-y-4">
-      <h3 class="font-bold text-lg text-slate-100">Assign Hardware / Wearable to User</h3>
+  <!-- Modal: Assign Hardware / Wearables (Admin) -->
+  <div id="modal-assign-device" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
+    <div class="glass max-w-md w-full rounded-3xl p-6 border border-slate-800 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+        <h3 class="font-bold text-lg text-slate-100 flex items-center space-x-2">
+          <i data-lucide="cpu" class="w-5 h-5 text-amber-400"></i>
+          <span>Assign Hardware to Employee</span>
+        </h3>
+        <button onclick="closeModal('modal-assign-device')" class="text-slate-400 hover:text-slate-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
       <div class="space-y-3">
         <div>
-          <label class="text-xs text-slate-400">Select User</label>
-          <select id="assign-device-user" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100"></select>
+          <label class="text-xs text-slate-300 font-semibold">Select Employee</label>
+          <select id="assign-device-user" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100"></select>
         </div>
         <div>
-          <label class="text-xs text-slate-400">Device / Hardware Type</label>
-          <select id="assign-device-provider" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
-            <option value="pavlok">Pavlok 3 Haptic Wristband</option>
+          <label class="text-xs text-slate-300 font-semibold">Device / Hardware Model</label>
+          <select id="assign-device-provider" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+            <option value="pavlok">Pavlok 3 Haptic Shock Clock</option>
             <option value="ringconn">RingConn Gen 2 Air Smart Ring</option>
-            <option value="home_assistant">Home Assistant Office Integration</option>
+            <option value="home_assistant">Home Assistant Smart Office Hub</option>
           </select>
         </div>
         <div>
-          <label class="text-xs text-slate-400">Device Label / Serial Number</label>
-          <input id="assign-device-label" type="text" placeholder="e.g. Pavlok 3 #04 - Alex" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+          <label class="text-xs text-slate-300 font-semibold">Device Label / Serial Number</label>
+          <input id="assign-device-label" type="text" placeholder="e.g. Pavlok 3 #02 - Engineering" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
         </div>
         <div>
-          <label class="text-xs text-slate-400">API Key / Token / Endpoint</label>
-          <input id="assign-device-key" type="password" placeholder="Enter hardware API key or token" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+          <label class="text-xs text-slate-300 font-semibold">API Key / Token / Endpoint</label>
+          <input id="assign-device-key" type="password" placeholder="Enter device token or API secret" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
         </div>
       </div>
       <div class="flex justify-end space-x-3 pt-3">
         <button onclick="closeModal('modal-assign-device')" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-sm">Cancel</button>
-        <button onclick="submitAssignDevice()" class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-sm font-semibold">Assign Device</button>
+        <button onclick="submitAssignDevice()" class="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-sm font-semibold shadow">Assign Device</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Configure Pavlok 3 -->
+  <div id="modal-pavlok-config" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
+    <div class="glass max-w-md w-full rounded-3xl p-6 border border-slate-800 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+        <h3 class="font-bold text-lg text-slate-100 flex items-center space-x-2">
+          <i data-lucide="zap" class="w-5 h-5 text-amber-400"></i>
+          <span>Configure Pavlok 3 Wristband</span>
+        </h3>
+        <button onclick="closeModal('modal-pavlok-config')" class="text-slate-400 hover:text-slate-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <label class="text-xs text-slate-300 font-semibold">Pavlok API Key</label>
+          <input id="pavlok-cfg-key" type="password" placeholder="pavlok_api_token_..." class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+          <p class="text-[11px] text-slate-400 mt-0.5">Found in Pavlok app > Settings > Developer Access.</p>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs text-slate-300 font-semibold">Default Stimulus</label>
+            <select id="pavlok-cfg-stim" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+              <option value="vibration" selected>Vibration</option>
+              <option value="beep">Chime / Beep</option>
+              <option value="shock">Electric Zap</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs text-slate-300 font-semibold">Intensity (1-100%)</label>
+            <input id="pavlok-cfg-intensity" type="number" min="1" max="100" value="50" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+          </div>
+        </div>
+        <div>
+          <label class="text-xs text-slate-300 font-semibold">Overdue Task Alert Delay</label>
+          <select id="pavlok-cfg-delay" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+            <option value="5">5 minutes overdue</option>
+            <option value="15" selected>15 minutes overdue</option>
+            <option value="30">30 minutes overdue</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex justify-between space-x-3 pt-3">
+        <button onclick="testPavlokConfig()" class="px-4 py-2 rounded-xl bg-amber-600/20 text-amber-300 border border-amber-500/30 text-xs font-semibold">
+          Send Test Pulse
+        </button>
+        <div class="flex space-x-2">
+          <button onclick="closeModal('modal-pavlok-config')" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-sm">Cancel</button>
+          <button onclick="submitPavlokConfig()" class="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-sm font-semibold shadow">Save Settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Configure RingConn -->
+  <div id="modal-ringconn-config" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
+    <div class="glass max-w-md w-full rounded-3xl p-6 border border-slate-800 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+        <h3 class="font-bold text-lg text-slate-100 flex items-center space-x-2">
+          <i data-lucide="activity" class="w-5 h-5 text-violet-400"></i>
+          <span>Configure RingConn Gen 2 Air</span>
+        </h3>
+        <button onclick="closeModal('modal-ringconn-config')" class="text-slate-400 hover:text-slate-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <label class="text-xs text-slate-300 font-semibold">RingConn Account / API Token</label>
+          <input id="ringconn-cfg-token" type="password" placeholder="ringconn_oauth_token_..." class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+        </div>
+        <div>
+          <label class="text-xs text-slate-300 font-semibold">Ring Device Serial / Model</label>
+          <input id="ringconn-cfg-id" type="text" placeholder="RingConn Gen 2 Air (Matte Black)" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+        </div>
+        <div class="flex items-center space-x-2 pt-1">
+          <input id="ringconn-cfg-autoscale" type="checkbox" checked class="rounded bg-slate-900 border-slate-700 text-violet-600">
+          <label for="ringconn-cfg-autoscale" class="text-xs text-slate-300">Enable Dynamic Workload Capacity Scaling (60% - 115%)</label>
+        </div>
+      </div>
+      <div class="flex justify-end space-x-3 pt-3">
+        <button onclick="closeModal('modal-ringconn-config')" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-sm">Cancel</button>
+        <button onclick="submitRingConnConfig()" class="px-5 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold shadow">Save & Calibrate</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Configure Home Assistant -->
+  <div id="modal-ha-config" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
+    <div class="glass max-w-md w-full rounded-3xl p-6 border border-slate-800 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+        <h3 class="font-bold text-lg text-slate-100 flex items-center space-x-2">
+          <i data-lucide="home" class="w-5 h-5 text-blue-400"></i>
+          <span>Configure Home Assistant Hub</span>
+        </h3>
+        <button onclick="closeModal('modal-ha-config')" class="text-slate-400 hover:text-slate-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <label class="text-xs text-slate-300 font-semibold">Home Assistant URL</label>
+          <input id="ha-cfg-url" type="text" value="http://homeassistant.local:8123" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+        </div>
+        <div>
+          <label class="text-xs text-slate-300 font-semibold">Long-Lived Access Token</label>
+          <input id="ha-cfg-token" type="password" placeholder="eyJhbGciOi..." class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs text-slate-300 font-semibold">Deep Focus Scene ID</label>
+            <input id="ha-cfg-focus" type="text" value="scene.focus_time" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+          </div>
+          <div>
+            <label class="text-xs text-slate-300 font-semibold">Relax / Break Scene ID</label>
+            <input id="ha-cfg-relax" type="text" value="scene.relax" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-end space-x-3 pt-3">
+        <button onclick="closeModal('modal-ha-config')" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-sm">Cancel</button>
+        <button onclick="submitHAConfig()" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold shadow">Save & Link</button>
       </div>
     </div>
   </div>
 
   <!-- Modal: Calendar Feed Sync -->
-  <div id="modal-sync" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-    <div class="glass max-w-md w-full rounded-2xl p-6 border border-slate-800 space-y-4">
-      <h3 class="font-bold text-lg text-slate-100">Sync Google / Outlook Calendar</h3>
-      <p class="text-xs text-slate-400">Paste your private iCal / .ics feed URL (from Google Calendar Settings > Integrate Calendar > Secret address in iCal format, or Outlook Publish Calendar).</p>
+  <div id="modal-sync" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
+    <div class="glass max-w-md w-full rounded-3xl p-6 border border-slate-800 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+        <h3 class="font-bold text-lg text-slate-100">Sync Google / Outlook Calendar</h3>
+        <button onclick="closeModal('modal-sync')" class="text-slate-400 hover:text-slate-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <p class="text-xs text-slate-400">Paste your private iCal / .ics feed URL (from Google Calendar Settings > Secret address in iCal format, or Outlook Publish Calendar).</p>
       <div class="space-y-3">
         <div>
-          <label class="text-xs text-slate-400">Calendar Name</label>
-          <input id="sync-feed-name" type="text" value="Work (Google/Outlook)" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+          <label class="text-xs text-slate-300 font-semibold">Calendar Name</label>
+          <input id="sync-feed-name" type="text" value="Work (Google/Outlook)" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
         </div>
         <div>
-          <label class="text-xs text-slate-400">iCal Feed URL</label>
-          <input id="sync-feed-url" type="text" placeholder="https://calendar.google.com/calendar/ical/.../basic.ics" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+          <label class="text-xs text-slate-300 font-semibold">iCal Feed URL</label>
+          <input id="sync-feed-url" type="text" placeholder="https://calendar.google.com/calendar/ical/.../basic.ics" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
         </div>
       </div>
       <div class="flex justify-end space-x-3 pt-3">
         <button onclick="closeModal('modal-sync')" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-sm">Cancel</button>
-        <button onclick="submitFeedSync()" class="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-sm font-semibold">Subscribe & Sync</button>
+        <button onclick="submitFeedSync()" class="px-5 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-sm font-semibold shadow">Subscribe & Sync</button>
       </div>
     </div>
   </div>
 
   <!-- Modal: Import .ics File -->
-  <div id="modal-import" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-    <div class="glass max-w-md w-full rounded-2xl p-6 border border-slate-800 space-y-4">
-      <h3 class="font-bold text-lg text-slate-100">Import .ics Calendar File</h3>
+  <div id="modal-import" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
+    <div class="glass max-w-md w-full rounded-3xl p-6 border border-slate-800 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+        <h3 class="font-bold text-lg text-slate-100">Import .ics Calendar File</h3>
+        <button onclick="closeModal('modal-import')" class="text-slate-400 hover:text-slate-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
       <div class="space-y-3">
         <div>
-          <label class="text-xs text-slate-400">Select .ics file</label>
-          <input id="import-file-input" type="file" accept=".ics" class="w-full text-xs text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500">
+          <label class="text-xs text-slate-300 font-semibold">Select .ics file</label>
+          <input id="import-file-input" type="file" accept=".ics" class="w-full mt-1 text-xs text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500">
         </div>
         <div>
-          <label class="text-xs text-slate-400">Calendar Name (Optional)</label>
-          <input id="import-cal-name" type="text" placeholder="Imported Schedule" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+          <label class="text-xs text-slate-300 font-semibold">Calendar Name (Optional)</label>
+          <input id="import-cal-name" type="text" placeholder="Imported Schedule" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
         </div>
       </div>
       <div class="flex justify-end space-x-3 pt-3">
         <button onclick="closeModal('modal-import')" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-sm">Cancel</button>
-        <button onclick="submitICSImport()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold">Upload & Import</button>
+        <button onclick="submitICSImport()" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold shadow">Upload & Import</button>
       </div>
     </div>
   </div>
 
   <!-- Modal: New Task -->
-  <div id="modal-task" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-    <div class="glass max-w-md w-full rounded-2xl p-6 border border-slate-800 space-y-4">
-      <h3 class="font-bold text-lg text-slate-100">Create New Action Task</h3>
+  <div id="modal-task" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
+    <div class="glass max-w-md w-full rounded-3xl p-6 border border-slate-800 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+        <h3 class="font-bold text-lg text-slate-100">Create New Action Task</h3>
+        <button onclick="closeModal('modal-task')" class="text-slate-400 hover:text-slate-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
       <div class="space-y-3">
         <div>
-          <label class="text-xs text-slate-400">Task Title</label>
-          <input id="task-title-input" type="text" placeholder="e.g. Complete System Integration" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+          <label class="text-xs text-slate-300 font-semibold">Task Title</label>
+          <input id="task-title-input" type="text" placeholder="e.g. Complete System Integration" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="text-xs text-slate-400">Priority</label>
-            <select id="task-priority-input" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+            <label class="text-xs text-slate-300 font-semibold">Priority</label>
+            <select id="task-priority-input" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
               <option value="P1">P1 - Critical</option>
               <option value="P2" selected>P2 - High</option>
               <option value="P3">P3 - Medium</option>
@@ -708,8 +896,8 @@
             </select>
           </div>
           <div>
-            <label class="text-xs text-slate-400">Duration (Mins)</label>
-            <input id="task-duration-input" type="number" value="45" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+            <label class="text-xs text-slate-300 font-semibold">Duration (Mins)</label>
+            <input id="task-duration-input" type="number" value="45" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
           </div>
         </div>
         <div class="flex items-center space-x-2 pt-2">
@@ -719,43 +907,53 @@
       </div>
       <div class="flex justify-end space-x-3 pt-3">
         <button onclick="closeModal('modal-task')" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-sm">Cancel</button>
-        <button onclick="submitNewTask()" class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold">Create & Auto-Fit</button>
+        <button onclick="submitNewTask()" class="px-5 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold shadow">Create & Auto-Fit</button>
       </div>
     </div>
   </div>
 
   <!-- Modal: Decompose Task -->
-  <div id="modal-decompose" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-    <div class="glass max-w-md w-full rounded-2xl p-6 border border-slate-800 space-y-4">
-      <h3 class="font-bold text-lg text-slate-100">AI Task & SOP Decomposition</h3>
+  <div id="modal-decompose" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
+    <div class="glass max-w-md w-full rounded-3xl p-6 border border-slate-800 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+        <h3 class="font-bold text-lg text-slate-100">AI Task & SOP Decomposition</h3>
+        <button onclick="closeModal('modal-decompose')" class="text-slate-400 hover:text-slate-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
       <div>
-        <label class="text-xs text-slate-400">Goal / Project Description</label>
-        <textarea id="decompose-input" rows="3" placeholder="e.g. Deploy production release..." class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100"></textarea>
+        <label class="text-xs text-slate-300 font-semibold">Goal / Project Description</label>
+        <textarea id="decompose-input" rows="3" placeholder="e.g. Deploy production release..." class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100"></textarea>
       </div>
       <div class="flex justify-end space-x-3 pt-3">
         <button onclick="closeModal('modal-decompose')" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-sm">Cancel</button>
-        <button onclick="submitTaskDecomposition()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-semibold">Decompose into SOP</button>
+        <button onclick="submitTaskDecomposition()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-semibold shadow">Decompose into SOP</button>
       </div>
     </div>
   </div>
 
   <!-- Modal: New Expense -->
-  <div id="modal-expense" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-    <div class="glass max-w-md w-full rounded-2xl p-6 border border-slate-800 space-y-4">
-      <h3 class="font-bold text-lg text-slate-100">Log Shared Expense</h3>
+  <div id="modal-expense" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
+    <div class="glass max-w-md w-full rounded-3xl p-6 border border-slate-800 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+        <h3 class="font-bold text-lg text-slate-100">Log Shared Expense</h3>
+        <button onclick="closeModal('modal-expense')" class="text-slate-400 hover:text-slate-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
       <div class="space-y-3">
         <div>
-          <label class="text-xs text-slate-400">Title</label>
-          <input id="expense-title-input" type="text" placeholder="e.g. High Speed Fiber" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+          <label class="text-xs text-slate-300 font-semibold">Title</label>
+          <input id="expense-title-input" type="text" placeholder="e.g. High Speed Fiber" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="text-xs text-slate-400">Amount ($)</label>
-            <input id="expense-amount-input" type="number" step="0.01" value="80.00" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+            <label class="text-xs text-slate-300 font-semibold">Amount ($)</label>
+            <input id="expense-amount-input" type="number" step="0.01" value="80.00" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
           </div>
           <div>
-            <label class="text-xs text-slate-400">Category</label>
-            <select id="expense-category-input" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+            <label class="text-xs text-slate-300 font-semibold">Category</label>
+            <select id="expense-category-input" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
               <option value="utilities">Utilities</option>
               <option value="rent">Rent</option>
               <option value="groceries">Groceries</option>
@@ -765,7 +963,7 @@
       </div>
       <div class="flex justify-end space-x-3 pt-3">
         <button onclick="closeModal('modal-expense')" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-sm">Cancel</button>
-        <button onclick="submitNewExpense()" class="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold">Save & Split (50/50)</button>
+        <button onclick="submitNewExpense()" class="px-5 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold shadow">Save & Split (50/50)</button>
       </div>
     </div>
   </div>

@@ -21,6 +21,35 @@ function showToast(msg) {
   }, 4000);
 }
 
+// Modal Open/Close Utilities
+function openModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove("hidden");
+  if (window.lucide) lucide.createIcons();
+}
+
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.add("hidden");
+}
+
+function openAddUserModal() { openModal("modal-add-user"); }
+function openAssignDeviceModal() {
+  const select = document.getElementById("assign-device-user");
+  if (select && allUsersCache.length > 0) {
+    select.innerHTML = allUsersCache.map(u => `<option value="${u.id}">${u.full_name} (${u.email})</option>`).join("");
+  }
+  openModal("modal-assign-device");
+}
+function openPavlokConfigModal() { openModal("modal-pavlok-config"); }
+function openRingConnConfigModal() { openModal("modal-ringconn-config"); }
+function openHAConfigModal() { openModal("modal-ha-config"); }
+function openSyncModal() { openModal("modal-sync"); }
+function openImportModal() { openModal("modal-import"); }
+function openNewTaskModal() { openModal("modal-task"); }
+function openDecomposeModal() { openModal("modal-decompose"); }
+function openNewExpenseModal() { openModal("modal-expense"); }
+
 // 1. Setup Wizard & Auth Check
 async function checkSetupOrAuth() {
   try {
@@ -43,7 +72,7 @@ async function checkSetupOrAuth() {
   }
 }
 
-// Setup Wizard Stepper (2 Simple Steps)
+// Setup Wizard Stepper
 function goToWizardStep(stepNum) {
   document.querySelectorAll(".wizard-step").forEach(el => el.classList.add("hidden"));
   const targetStep = document.getElementById(`wizard-step-${stepNum}`);
@@ -314,9 +343,6 @@ async function triggerAutoSchedule() {
 }
 
 // Calendar Sync & Import Handlers
-function openSyncModal() { document.getElementById("modal-sync").classList.remove("hidden"); }
-function openImportModal() { document.getElementById("modal-import").classList.remove("hidden"); }
-
 async function submitFeedSync() {
   const name = document.getElementById("sync-feed-name").value.trim();
   const url = document.getElementById("sync-feed-url").value.trim();
@@ -561,36 +587,152 @@ async function loadBiometrics() {
   } catch (e) {}
 }
 
-function updateBioPreview() {
-  const sleepIn = document.getElementById("bio-sleep-input");
-  const readIn = document.getElementById("bio-readiness-input");
-  if (sleepIn) document.getElementById("bio-sleep-val").innerText = sleepIn.value;
-  if (readIn) document.getElementById("bio-readiness-val").innerText = readIn.value;
-}
+// Hardware & Wearable Configuration Handlers
+async function submitHAConfig() {
+  const url = document.getElementById("ha-cfg-url").value.trim();
+  const token = document.getElementById("ha-cfg-token").value.trim();
+  const focus = document.getElementById("ha-cfg-focus").value.trim();
+  const relax = document.getElementById("ha-cfg-relax").value.trim();
 
-async function submitBiometrics() {
+  if (!url || !token) {
+    showToast("Please enter Home Assistant URL and token.");
+    return;
+  }
+
+  showToast("Saving Home Assistant connection...");
   const headers = {
     "Authorization": `Bearer ${currentToken}`,
     "Content-Type": "application/json"
   };
-  const sleep = parseFloat(document.getElementById("bio-sleep-input").value);
-  const readiness = parseFloat(document.getElementById("bio-readiness-input").value);
-  const todayStr = new Date().toISOString().split("T")[0];
 
-  await fetch("/api/v1/biometrics/ingest", {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      date: todayStr,
-      sleep_score: sleep,
-      readiness_score: readiness,
-      hrv: 55,
-      source: "ringconn_gen2_air"
-    })
-  });
+  try {
+    const resp = await fetch("/api/v1/integrations/home-assistant/config", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        base_url: url,
+        token: token,
+        focus_scene: focus || "scene.focus_time",
+        relax_scene: relax || "scene.relax"
+      })
+    });
 
-  showToast("Biometrics ingested. Workload capacity recalibrated.");
-  await loadBiometrics();
+    if (resp.ok) {
+      closeModal("modal-ha-config");
+      showToast("Home Assistant linked successfully!");
+    } else {
+      showToast("Failed to save Home Assistant config.");
+    }
+  } catch (e) {
+    showToast("Network error linking Home Assistant.");
+  }
+}
+
+async function submitPavlokConfig() {
+  const key = document.getElementById("pavlok-cfg-key").value.trim();
+  const stim = document.getElementById("pavlok-cfg-stim").value;
+  const intensity = parseInt(document.getElementById("pavlok-cfg-intensity").value) || 50;
+  const delay = parseInt(document.getElementById("pavlok-cfg-delay").value) || 15;
+
+  if (!key) {
+    showToast("Please provide your Pavlok API key.");
+    return;
+  }
+
+  showToast("Saving Pavlok 3 configuration...");
+  const headers = {
+    "Authorization": `Bearer ${currentToken}`,
+    "Content-Type": "application/json"
+  };
+
+  try {
+    const resp = await fetch("/api/v1/integrations/pavlok/config", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        api_key: key,
+        default_stimulus: stim,
+        default_intensity: intensity,
+        overdue_threshold_minutes: delay
+      })
+    });
+
+    if (resp.ok) {
+      closeModal("modal-pavlok-config");
+      showToast("Pavlok 3 configured successfully!");
+      document.getElementById("pavlok-status-text").innerText = `${stim.toUpperCase()} (${intensity}%)`;
+    } else {
+      showToast("Failed to save Pavlok config.");
+    }
+  } catch (e) {
+    showToast("Network error linking Pavlok.");
+  }
+}
+
+async function testPavlokConfig() {
+  const stim = document.getElementById("pavlok-cfg-stim").value;
+  const intensity = parseInt(document.getElementById("pavlok-cfg-intensity").value) || 50;
+  await sendPavlokNudge(stim, intensity);
+}
+
+async function submitRingConnConfig() {
+  const token = document.getElementById("ringconn-cfg-token").value.trim();
+  const devId = document.getElementById("ringconn-cfg-id").value.trim();
+  const autoscale = document.getElementById("ringconn-cfg-autoscale").checked;
+
+  if (!token) {
+    showToast("Please enter RingConn token.");
+    return;
+  }
+
+  showToast("Linking RingConn Gen 2 Air...");
+  const headers = {
+    "Authorization": `Bearer ${currentToken}`,
+    "Content-Type": "application/json"
+  };
+
+  try {
+    const resp = await fetch("/api/v1/integrations/ringconn/config", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        account_token: token,
+        device_id: devId || "RingConn-Air-Gen2",
+        auto_scale_capacity: autoscale
+      })
+    });
+
+    if (resp.ok) {
+      closeModal("modal-ringconn-config");
+      showToast("RingConn Gen 2 Air linked!");
+      await triggerRingConnSync();
+    } else {
+      showToast("Failed to save RingConn config.");
+    }
+  } catch (e) {
+    showToast("Network error linking RingConn.");
+  }
+}
+
+async function triggerRingConnSync() {
+  showToast("Fetching biometrics from RingConn...");
+  const headers = { "Authorization": `Bearer ${currentToken}` };
+
+  try {
+    const resp = await fetch("/api/v1/integrations/ringconn/sync", {
+      method: "POST",
+      headers
+    });
+    const data = await resp.json();
+    if (resp.ok) {
+      showToast(`✔ RingConn synced! Readiness: ${Math.round(data.readiness_score)}% (${data.recovery_status})`);
+      await loadBiometrics();
+    } else {
+      showToast("Sync failed.");
+    }
+  } catch (e) {
+    showToast("Network error syncing biometrics.");
+  }
 }
 
 async function triggerHAScene(sceneId) {
@@ -631,7 +773,6 @@ async function loadAdminData() {
     ]);
 
     if (!usersResp.ok) {
-      // Current user is not an admin, hide admin tab or show restricted message
       const adminBtn = document.getElementById("tab-admin");
       if (adminBtn) adminBtn.classList.add("hidden");
       return;
@@ -661,14 +802,7 @@ async function loadAdminData() {
     const tbody = document.getElementById("admin-users-table-body");
     tbody.innerHTML = "";
 
-    const userSelect = document.getElementById("assign-device-user");
-    if (userSelect) userSelect.innerHTML = "";
-
     users.forEach(u => {
-      if (userSelect) {
-        userSelect.innerHTML += `<option value="${u.id}">${u.full_name} (${u.email})</option>`;
-      }
-
       const roleBadges = {
         superadmin: 'bg-rose-950 text-rose-300 border-rose-800',
         admin: 'bg-indigo-950 text-indigo-300 border-indigo-800',
@@ -785,9 +919,6 @@ async function loadAdminData() {
     console.error("Admin fetch error:", e);
   }
 }
-
-function openAddUserModal() { document.getElementById("modal-add-user").classList.remove("hidden"); }
-function openAssignDeviceModal() { document.getElementById("modal-assign-device").classList.remove("hidden"); }
 
 async function submitAddUser() {
   const name = document.getElementById("new-user-name").value.trim();
@@ -1011,12 +1142,7 @@ async function sendChatMessage() {
   }
 }
 
-// Modal Helpers
-function openNewTaskModal() { document.getElementById("modal-task").classList.remove("hidden"); }
-function openDecomposeModal() { document.getElementById("modal-decompose").classList.remove("hidden"); }
-function openNewExpenseModal() { document.getElementById("modal-expense").classList.remove("hidden"); }
-function closeModal(id) { document.getElementById(id).classList.add("hidden"); }
-
+// Additional Task & Expense Submits
 async function submitNewTask() {
   const title = document.getElementById("task-title-input").value.trim();
   const priority = document.getElementById("task-priority-input").value;
