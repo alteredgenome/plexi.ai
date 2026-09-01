@@ -20,10 +20,14 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     full_name = Column(String(255), nullable=False)
     is_admin = Column(Boolean, default=False)
+    role = Column(String(32), default="member") # superadmin, admin, manager, member
+    status = Column(String(32), default="active") # active, suspended, invited
+    department = Column(String(64), default="Executive")
     timezone = Column(String(64), default="UTC")
     work_start_hour = Column(Integer, default=9)
     work_end_hour = Column(Integer, default=18)
     daily_capacity_minutes = Column(Integer, default=480)
+    avatar_url = Column(String(512), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     calendars = relationship("Calendar", back_populates="user", cascade="all, delete-orphan")
@@ -105,7 +109,7 @@ class Task(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    priority = Column(String(8), default="P3")
+    priority = Column(String(8), default="P3") # P1, P2, P3, P4
     status = Column(String(32), default="todo")
     duration_minutes = Column(Integer, default=30)
     deadline = Column(DateTime, nullable=True)
@@ -182,7 +186,9 @@ class IntegrationCredential(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    provider = Column(String(64), nullable=False)
+    provider = Column(String(64), nullable=False) # pavlok, ringconn, home_assistant, openrouter
+    device_name = Column(String(128), nullable=True)
+    device_id = Column(String(128), nullable=True)
     credentials_json = Column(JSON, nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)

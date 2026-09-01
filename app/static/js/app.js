@@ -1,7 +1,8 @@
-// Plexi Client State
+// Plexi Enterprise Client State
 let currentToken = localStorage.getItem("plexi_token");
 let currentUser = JSON.parse(localStorage.getItem("plexi_user") || "null");
 let currentHouseholdId = 1;
+let allUsersCache = [];
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (window.lucide) lucide.createIcons();
@@ -27,7 +28,6 @@ async function checkSetupOrAuth() {
     const status = await resp.json();
 
     if (!status.is_setup_completed) {
-      // Show Streamlined First-Run Setup Wizard
       const overlay = document.getElementById("setup-wizard-overlay");
       if (overlay) overlay.classList.remove("hidden");
       return;
@@ -129,8 +129,8 @@ async function submitSetupWizard() {
 }
 
 function promptLoginModal() {
-  const email = prompt("Plexi Master Login\nEnter email:") || "admin@plexi.fyi";
-  const pass = prompt("Enter master password:") || "";
+  const email = prompt("Plexi Enterprise Login\nEnter email:") || "admin@plexi.fyi";
+  const pass = prompt("Enter password:") || "";
   
   if (!pass) return;
 
@@ -159,7 +159,8 @@ async function loadDashboardData() {
     loadAgenda(),
     loadProjects(),
     loadFinance(),
-    loadBiometrics()
+    loadBiometrics(),
+    loadAdminData()
   ]);
 }
 
@@ -179,6 +180,10 @@ function switchTab(tabName) {
     activeBtn.classList.remove("text-slate-400");
   }
 
+  if (tabName === "admin") {
+    loadAdminData();
+  }
+
   if (window.lucide) lucide.createIcons();
 }
 
@@ -189,10 +194,9 @@ async function loadAgenda() {
   const todayStr = new Date().toISOString().split("T")[0];
 
   try {
-    const [evResp, taskResp, habitResp] = await Promise.all([
+    const [evResp, taskResp] = await Promise.all([
       fetch(`/api/v1/calendars/events?start_date=${todayStr}T00:00:00&end_date=${todayStr}T23:59:59`, { headers }),
-      fetch(`/api/v1/tasks/`, { headers }),
-      fetch(`/api/v1/habits/`, { headers })
+      fetch(`/api/v1/tasks/`, { headers })
     ]);
 
     const events = await evResp.json();
@@ -613,6 +617,331 @@ async function sendPavlokNudge(type, intensity) {
     body: JSON.stringify({ stimulus_type: type, intensity: intensity, reason: "Manual Test Alert" })
   });
   showToast(`Pavlok 3: Sent ${type} (${intensity}%)`);
+}
+
+// ================= TAB 5: ENTERPRISE ADMIN & USER/HARDWARE MANAGEMENT =================
+async function loadAdminData() {
+  if (!currentToken) return;
+  const headers = { "Authorization": `Bearer ${currentToken}` };
+
+  try {
+    const [usersResp, capResp] = await Promise.all([
+      fetch("/api/v1/admin/users", { headers }),
+      fetch("/api/v1/admin/team-capacity", { headers })
+    ]);
+
+    if (!usersResp.ok) {
+      // Current user is not an admin, hide admin tab or show restricted message
+      const adminBtn = document.getElementById("tab-admin");
+      if (adminBtn) adminBtn.classList.add("hidden");
+      return;
+    }
+
+    const users = await usersResp.json();
+    const capacity = await capResp.json();
+    allUsersCache = users;
+
+    // 1. Metric Counters
+    document.getElementById("admin-user-count").innerText = users.length;
+    let totalDevices = 0;
+    users.forEach(u => { totalDevices += (u.devices ? u.devices.length : 0); });
+    document.getElementById("admin-device-count").innerText = totalDevices;
+
+    const highRiskCount = capacity.filter(c => c.burnout_risk === "high" || c.burnout_risk === "overloaded").length;
+    const burnoutStatus = document.getElementById("admin-burnout-status");
+    if (highRiskCount > 0) {
+      burnoutStatus.innerText = `${highRiskCount} Overloaded`;
+      burnoutStatus.className = "text-2xl font-bold text-rose-400 mt-1";
+    } else {
+      burnoutStatus.innerText = "Optimal Balance";
+      burnoutStatus.className = "text-2xl font-bold text-emerald-400 mt-1";
+    }
+
+    // 2. User Directory Table
+    const tbody = document.getElementById("admin-users-table-body");
+    tbody.innerHTML = "";
+
+    const userSelect = document.getElementById("assign-device-user");
+    if (userSelect) userSelect.innerHTML = "";
+
+    users.forEach(u => {
+      if (userSelect) {
+        userSelect.innerHTML += `<option value="${u.id}">${u.full_name} (${u.email})</option>`;
+      }
+
+      const roleBadges = {
+        superadmin: 'bg-rose-950 text-rose-300 border-rose-800',
+        admin: 'bg-indigo-950 text-indigo-300 border-indigo-800',
+        manager: 'bg-amber-950 text-amber-300 border-amber-800',
+        member: 'bg-slate-800 text-slate-300 border-slate-700'
+      }[u.role] || 'bg-slate-800 text-slate-300 border-slate-700';
+
+      const devPills = (u.devices && u.devices.length > 0)
+        ? u.devices.map(d => `<span class="text-[10px] px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-amber-300 font-mono">${d.provider.toUpperCase()}</span>`).join(" ")
+        : `<span class="text-xs text-slate-500">None</span>`;
+
+      const tr = document.createElement("tr");
+      tr.className = "hover:bg-slate-900/50";
+      tr.innerHTML = `
+        <td class="px-4 py-3.5">
+          <div class="font-semibold text-slate-200">${u.full_name}</div>
+          <div class="text-xs text-slate-400">${u.email}</div>
+        </td>
+        <td class="px-4 py-3.5">
+          <span class="text-xs px-2 py-0.5 rounded-full border capitalize ${roleBadges}">${u.role}</span>
+        </td>
+        <td class="px-4 py-3.5 text-xs text-slate-300">${u.department}</td>
+        <td class="px-4 py-3.5 text-xs text-slate-300 font-mono">${u.work_start_hour}:00 - ${u.work_end_hour}:00</td>
+        <td class="px-4 py-3.5 text-xs text-slate-300 font-mono">${u.daily_capacity_minutes}m / day</td>
+        <td class="px-4 py-3.5">${devPills}</td>
+        <td class="px-4 py-3.5 text-right space-x-2">
+          <button onclick="adminResetPasswordPrompt(${u.id}, '${u.email}')" class="text-xs text-sky-400 hover:underline">Reset Pass</button>
+          <button onclick="adminDeleteUser(${u.id})" class="text-xs text-rose-400 hover:underline">Remove</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    // 3. Hardware & Wearables Matrix Grid
+    const devMatrix = document.getElementById("admin-device-matrix");
+    devMatrix.innerHTML = "";
+
+    users.forEach(u => {
+      const hasDevs = u.devices && u.devices.length > 0;
+      const card = document.createElement("div");
+      card.className = "p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3";
+
+      let devContent = "";
+      if (hasDevs) {
+        u.devices.forEach(d => {
+          devContent += `
+            <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-950 border border-slate-800/80">
+              <div class="space-y-0.5">
+                <div class="text-xs font-semibold text-slate-200 flex items-center space-x-1">
+                  <span>⚡ ${d.device_name}</span>
+                </div>
+                <div class="text-[10px] text-slate-400 font-mono">Provider: ${d.provider} • ID: ${d.device_id || 'Active'}</div>
+              </div>
+              <button onclick="testUserHardware(${u.id}, '${d.provider}')" class="px-2.5 py-1 rounded bg-amber-600/20 text-amber-300 border border-amber-500/30 text-[11px] font-semibold hover:bg-amber-600/30">
+                Test Pulse
+              </button>
+            </div>
+          `;
+        });
+      } else {
+        devContent = `<div class="text-xs text-slate-500 italic">No wearables linked. Click 'Assign Hardware' to provision Pavlok / RingConn.</div>`;
+      }
+
+      card.innerHTML = `
+        <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+          <div>
+            <span class="text-sm font-bold text-slate-200">${u.full_name}</span>
+            <span class="text-xs text-slate-400 block">${u.department}</span>
+          </div>
+          <span class="text-xs font-mono text-indigo-400">${u.devices ? u.devices.length : 0} Devices</span>
+        </div>
+        <div class="space-y-2">${devContent}</div>
+      `;
+      devMatrix.appendChild(card);
+    });
+
+    // 4. Team Capacity & Burnout Heatmap
+    const capList = document.getElementById("admin-capacity-list");
+    capList.innerHTML = "";
+
+    capacity.forEach(c => {
+      const riskColors = {
+        overloaded: 'bg-rose-500 text-rose-300',
+        high: 'bg-amber-500 text-amber-300',
+        moderate: 'bg-indigo-500 text-indigo-300',
+        low: 'bg-emerald-500 text-emerald-300'
+      }[c.burnout_risk] || 'bg-indigo-500 text-indigo-300';
+
+      const readText = c.readiness_score ? `• RingConn Readiness: <b>${Math.round(c.readiness_score)}%</b> (${c.recovery_status})` : '';
+
+      const item = document.createElement("div");
+      item.className = "p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2";
+      item.innerHTML = `
+        <div class="flex items-center justify-between text-xs">
+          <div class="space-x-2">
+            <span class="font-bold text-slate-200">${c.full_name}</span>
+            <span class="text-slate-400">(${c.department} - ${c.role})</span>
+            <span class="text-slate-400">${readText}</span>
+          </div>
+          <div class="font-mono font-bold text-slate-200">
+            ${c.scheduled_minutes}m / ${c.daily_capacity_minutes}m (${c.utilization_percentage}%)
+            <span class="ml-2 text-[10px] px-2 py-0.5 rounded-full uppercase ${riskColors}">${c.burnout_risk}</span>
+          </div>
+        </div>
+        <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+          <div class="h-full rounded-full ${c.utilization_percentage > 100 ? 'bg-rose-500' : 'bg-indigo-500'}" style="width: ${Math.min(c.utilization_percentage, 100)}%"></div>
+        </div>
+      `;
+      capList.appendChild(item);
+    });
+
+    if (window.lucide) lucide.createIcons();
+  } catch (e) {
+    console.error("Admin fetch error:", e);
+  }
+}
+
+function openAddUserModal() { document.getElementById("modal-add-user").classList.remove("hidden"); }
+function openAssignDeviceModal() { document.getElementById("modal-assign-device").classList.remove("hidden"); }
+
+async function submitAddUser() {
+  const name = document.getElementById("new-user-name").value.trim();
+  const email = document.getElementById("new-user-email").value.trim();
+  const pass = document.getElementById("new-user-pass").value;
+  const role = document.getElementById("new-user-role").value;
+  const dept = document.getElementById("new-user-dept").value.trim();
+  const cap = parseInt(document.getElementById("new-user-cap").value) || 480;
+  const tz = document.getElementById("new-user-tz").value.trim() || "America/New_York";
+
+  if (!name || !email || !pass) {
+    showToast("Please provide name, email, and password.");
+    return;
+  }
+
+  showToast("Provisioning team member...");
+  const headers = {
+    "Authorization": `Bearer ${currentToken}`,
+    "Content-Type": "application/json"
+  };
+
+  try {
+    const resp = await fetch("/api/v1/admin/users", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        full_name: name,
+        email: email,
+        password: pass,
+        role: role,
+        department: dept || "Operations",
+        daily_capacity_minutes: cap,
+        timezone: tz
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      showToast(`Error: ${err.detail || 'Failed to create user'}`);
+      return;
+    }
+
+    closeModal("modal-add-user");
+    showToast(`Successfully provisioned ${name}!`);
+    await loadAdminData();
+  } catch (e) {
+    showToast("Network error creating user.");
+  }
+}
+
+async function submitAssignDevice() {
+  const userId = parseInt(document.getElementById("assign-device-user").value);
+  const provider = document.getElementById("assign-device-provider").value;
+  const label = document.getElementById("assign-device-label").value.trim();
+  const key = document.getElementById("assign-device-key").value.trim();
+
+  if (!userId || !key) {
+    showToast("Please select user and enter device API key / token.");
+    return;
+  }
+
+  showToast("Linking hardware to employee profile...");
+  const headers = {
+    "Authorization": `Bearer ${currentToken}`,
+    "Content-Type": "application/json"
+  };
+
+  try {
+    const resp = await fetch("/api/v1/admin/devices/assign", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        user_id: userId,
+        provider: provider,
+        device_name: label || `${provider.toUpperCase()} Unit`,
+        credentials: { api_key: key, token: key }
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      showToast(`Error: ${err.detail || 'Failed to assign device'}`);
+      return;
+    }
+
+    closeModal("modal-assign-device");
+    showToast("Hardware device successfully assigned!");
+    await loadAdminData();
+  } catch (e) {
+    showToast("Failed to assign hardware.");
+  }
+}
+
+async function testUserHardware(userId, provider) {
+  showToast(`Sending test pulse to ${provider.toUpperCase()}...`);
+  const headers = {
+    "Authorization": `Bearer ${currentToken}`,
+    "Content-Type": "application/json"
+  };
+
+  try {
+    const resp = await fetch("/api/v1/admin/devices/test", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ user_id: userId, provider: provider, stimulus_type: "vibration", intensity: 60 })
+    });
+
+    const data = await resp.json();
+    if (resp.ok) {
+      showToast(`✔ ${provider.toUpperCase()} test signal delivered!`);
+    } else {
+      showToast(`Failed: ${data.detail || 'Test error'}`);
+    }
+  } catch (e) {
+    showToast("Test request failed.");
+  }
+}
+
+async function adminResetPasswordPrompt(userId, email) {
+  const newPass = prompt(`Reset Password for ${email}:\nEnter new temporary password (min 6 chars):`);
+  if (!newPass || newPass.length < 6) {
+    if (newPass) showToast("Password must be at least 6 characters.");
+    return;
+  }
+
+  const headers = {
+    "Authorization": `Bearer ${currentToken}`,
+    "Content-Type": "application/json"
+  };
+
+  const resp = await fetch(`/api/v1/admin/users/${userId}/reset-password`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ new_password: newPass })
+  });
+
+  if (resp.ok) {
+    showToast("Password reset successfully!");
+  } else {
+    showToast("Failed to reset password.");
+  }
+}
+
+async function adminDeleteUser(userId) {
+  if (!confirm(`Are you sure you want to remove team member ID #${userId}?`)) return;
+
+  const headers = { "Authorization": `Bearer ${currentToken}` };
+  const resp = await fetch(`/api/v1/admin/users/${userId}`, { method: "DELETE", headers });
+  if (resp.ok) {
+    showToast("Member removed.");
+    await loadAdminData();
+  } else {
+    showToast("Failed to remove user.");
+  }
 }
 
 // AI Assistant Drawer & Chat

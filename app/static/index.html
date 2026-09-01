@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Plexi | Self-Hosted AI Executive Assistant & Daily Planner</title>
+  <title>Plexi | Enterprise AI Executive Assistant & Daily Planner</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons -->
@@ -45,25 +45,23 @@
   <div id="setup-wizard-overlay" class="fixed inset-0 bg-slate-950/95 backdrop-blur-xl z-50 flex items-center justify-center p-4 hidden">
     <div class="glass max-w-lg w-full rounded-3xl p-8 border border-slate-800 shadow-2xl space-y-6">
       
-      <!-- Wizard Header -->
       <div class="flex items-center space-x-3 pb-4 border-b border-slate-800">
         <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
           <i data-lucide="sparkles" class="w-6 h-6 text-white"></i>
         </div>
         <div>
           <h2 class="text-xl font-bold text-slate-100 tracking-tight">Welcome to Plexi</h2>
-          <p class="text-xs text-slate-400">First-Run Setup & Administrator Configuration</p>
+          <p class="text-xs text-slate-400">First-Run Setup & Master Administrator</p>
         </div>
       </div>
 
-      <!-- Step Indicator -->
       <div class="flex items-center space-x-4 text-xs font-medium">
         <span id="step-ind-1" class="text-indigo-400 font-semibold">1. Admin Account</span>
         <span class="text-slate-600">•</span>
         <span id="step-ind-2" class="text-slate-500">2. AI & OpenRouter (Optional)</span>
       </div>
 
-      <!-- Wizard Step 1: Admin Account -->
+      <!-- Step 1: Admin Account -->
       <div id="wizard-step-1" class="wizard-step space-y-4">
         <div>
           <label class="text-xs font-semibold text-slate-300">Administrator Full Name</label>
@@ -94,12 +92,12 @@
         </div>
       </div>
 
-      <!-- Wizard Step 2: OpenRouter & LLM -->
+      <!-- Step 2: OpenRouter -->
       <div id="wizard-step-2" class="wizard-step space-y-4 hidden">
         <div>
           <label class="text-xs font-semibold text-slate-300">OpenRouter API Key (Optional)</label>
           <input id="wiz-openrouter-key" type="password" placeholder="sk-or-v1-..." class="w-full mt-1 px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
-          <p class="text-[11px] text-slate-400 mt-1">Leave blank to use local offline assistant mode or configure later.</p>
+          <p class="text-[11px] text-slate-400 mt-1">Leave blank to use local assistant or configure later.</p>
         </div>
         <div>
           <label class="text-xs font-semibold text-slate-300">Preferred Open-Weights Model</label>
@@ -130,7 +128,7 @@
         </div>
         <div>
           <span class="font-bold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-violet-300">Plexi</span>
-          <span class="text-xs ml-2 px-2 py-0.5 rounded-full bg-indigo-950 text-indigo-400 border border-indigo-800 font-medium">Executive AI</span>
+          <span class="text-xs ml-2 px-2 py-0.5 rounded-full bg-indigo-950 text-indigo-400 border border-indigo-800 font-medium">Enterprise</span>
         </div>
       </div>
 
@@ -150,7 +148,12 @@
         </button>
         <button onclick="switchTab('integrations')" id="tab-integrations" class="nav-tab px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800">
           <i data-lucide="sliders" class="w-4 h-4"></i>
-          <span>Sync & Integrations</span>
+          <span>Sync & Calendars</span>
+        </button>
+        <!-- Enterprise Admin Tab -->
+        <button onclick="switchTab('admin')" id="tab-admin" class="nav-tab px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 text-amber-400/80 hover:text-amber-300 hover:bg-slate-800">
+          <i data-lucide="users" class="w-4 h-4"></i>
+          <span>Team & Admin</span>
         </button>
       </nav>
 
@@ -178,7 +181,7 @@
             <h3 class="font-semibold text-slate-100">Workload Capacity Engine</h3>
             <span id="readiness-badge" class="px-2 py-0.5 text-xs rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800">Optimal (100%)</span>
           </div>
-          <p id="readiness-desc" class="text-xs text-slate-400 mt-0.5">Standard daily workload capacity active (480m available). Auto-places tasks around meeting buffers.</p>
+          <p id="readiness-desc" class="text-xs text-slate-400 mt-0.5">Dynamic scheduling active. Auto-places tasks around meeting buffers and energy windows.</p>
         </div>
       </div>
       <div class="flex items-center space-x-3 w-full md:w-auto justify-end">
@@ -201,7 +204,6 @@
     <section id="pane-agenda" class="tab-pane space-y-6">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        <!-- Timeline View (Left 2 cols) -->
         <div class="lg:col-span-2 glass rounded-2xl p-6 border border-slate-800">
           <div class="flex items-center justify-between mb-6">
             <div>
@@ -220,14 +222,9 @@
               </span>
             </div>
           </div>
-
-          <!-- Chronological Timeline Stream -->
-          <div id="timeline-container" class="relative pl-6 border-l-2 border-slate-800 space-y-4">
-            <!-- Dynamic items -->
-          </div>
+          <div id="timeline-container" class="relative pl-6 border-l-2 border-slate-800 space-y-4"></div>
         </div>
 
-        <!-- Right Side: Habits & Quick Integrations -->
         <div class="space-y-6">
           <div class="glass rounded-2xl p-5 border border-slate-800">
             <div class="flex items-center justify-between mb-4">
@@ -235,7 +232,6 @@
                 <i data-lucide="shield-check" class="w-4 h-4 text-indigo-400"></i>
                 <span>Defended Habits</span>
               </h3>
-              <button onclick="openNewHabitModal()" class="text-xs text-indigo-400 hover:underline">+ Add</button>
             </div>
             <div id="habit-list" class="space-y-2.5">
               <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between">
@@ -250,13 +246,12 @@
             </div>
           </div>
 
-          <!-- Quick Calendar Feed Status -->
           <div class="glass rounded-2xl p-5 border border-slate-800 space-y-3">
             <h3 class="font-semibold text-slate-200 flex items-center space-x-2 text-sm">
               <i data-lucide="calendar" class="w-4 h-4 text-sky-400"></i>
               <span>External Calendar Feeds</span>
             </h3>
-            <p class="text-xs text-slate-400">Syncs events from Google Calendar, Microsoft Outlook, and standard .ics subscriptions.</p>
+            <p class="text-xs text-slate-400">Syncs events from Google Calendar, Microsoft Outlook, and .ics feeds.</p>
             <button onclick="openSyncModal()" class="w-full py-2 rounded-xl bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-500/30 text-xs font-semibold transition">
               Manage Google / Outlook Sync
             </button>
@@ -279,7 +274,6 @@
         </button>
       </div>
 
-      <!-- Kanban Grid -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="glass rounded-2xl p-4 border border-slate-800">
           <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-800">
@@ -354,11 +348,10 @@
       </div>
     </section>
 
-    <!-- TAB 4: SYNC & INTEGRATIONS (Supplementary / Configured Separately) -->
+    <!-- TAB 4: SYNC & INTEGRATIONS -->
     <section id="pane-integrations" class="tab-pane hidden space-y-6">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         
-        <!-- Google Calendar & Outlook Feed Sync -->
         <div class="glass rounded-3xl p-6 border border-slate-800 space-y-4">
           <div class="flex items-center space-x-3">
             <div class="w-10 h-10 rounded-xl bg-sky-950 border border-sky-500/30 flex items-center justify-center text-sky-400">
@@ -381,7 +374,6 @@
           </div>
         </div>
 
-        <!-- Optional Home Assistant Connector -->
         <div class="glass rounded-3xl p-6 border border-slate-800 space-y-4">
           <div class="flex items-center space-x-3">
             <div class="w-10 h-10 rounded-xl bg-blue-950 border border-blue-500/30 flex items-center justify-center text-blue-400">
@@ -404,7 +396,6 @@
           </div>
         </div>
 
-        <!-- Optional Pavlok 3 & RingConn Hub -->
         <div class="glass rounded-3xl p-6 border border-slate-800 space-y-4">
           <div class="flex items-center space-x-3">
             <div class="w-10 h-10 rounded-xl bg-amber-950 border border-amber-500/30 flex items-center justify-center text-amber-400">
@@ -425,7 +416,6 @@
           </div>
         </div>
 
-        <!-- Optional RingConn Gen 2 Air Simulator -->
         <div class="glass rounded-3xl p-6 border border-slate-800 space-y-4">
           <div class="flex items-center space-x-3">
             <div class="w-10 h-10 rounded-xl bg-violet-950 border border-violet-500/30 flex items-center justify-center text-violet-400">
@@ -452,6 +442,89 @@
       </div>
     </section>
 
+    <!-- TAB 5: ENTERPRISE TEAM & SYSTEM ADMIN CONSOLE -->
+    <section id="pane-admin" class="tab-pane hidden space-y-6">
+      
+      <!-- Admin Top Metrics / Capacity Overview -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="glass rounded-2xl p-4 border border-slate-800">
+          <div class="text-xs text-slate-400">Total Team Members</div>
+          <div id="admin-user-count" class="text-2xl font-bold text-slate-100 mt-1">--</div>
+        </div>
+        <div class="glass rounded-2xl p-4 border border-slate-800">
+          <div class="text-xs text-slate-400">Connected Hardware (Pavlok / RingConn)</div>
+          <div id="admin-device-count" class="text-2xl font-bold text-amber-400 mt-1">--</div>
+        </div>
+        <div class="glass rounded-2xl p-4 border border-slate-800">
+          <div class="text-xs text-slate-400">Team Burnout Risk Status</div>
+          <div id="admin-burnout-status" class="text-2xl font-bold text-emerald-400 mt-1">Healthy</div>
+        </div>
+      </div>
+
+      <!-- User Directory Table -->
+      <div class="glass rounded-3xl border border-slate-800 overflow-hidden space-y-4 p-6">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h3 class="text-lg font-bold text-slate-100">Enterprise User Directory & Provisioning</h3>
+            <p class="text-xs text-slate-400">Manage user accounts, roles, daily workload capacities, and credentials</p>
+          </div>
+          <button onclick="openAddUserModal()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center space-x-2 shadow transition">
+            <i data-lucide="user-plus" class="w-4 h-4"></i>
+            <span>+ Provision Member</span>
+          </button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-slate-900/80 text-xs text-slate-400 uppercase tracking-wider border-b border-slate-800">
+              <tr>
+                <th class="px-4 py-3">Member</th>
+                <th class="px-4 py-3">Role</th>
+                <th class="px-4 py-3">Department</th>
+                <th class="px-4 py-3">Work Hours</th>
+                <th class="px-4 py-3">Capacity</th>
+                <th class="px-4 py-3">Assigned Devices</th>
+                <th class="px-4 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="admin-users-table-body" class="divide-y divide-slate-800"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Enterprise Hardware & Wearables Matrix -->
+      <div class="glass rounded-3xl border border-slate-800 p-6 space-y-4">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h3 class="text-lg font-bold text-slate-100 flex items-center space-x-2">
+              <i data-lucide="watch" class="w-5 h-5 text-amber-400"></i>
+              <span>Hardware & Wearable Device Assignment Hub</span>
+            </h3>
+            <p class="text-xs text-slate-400">Assign Pavlok 3 haptic wristbands, RingConn Gen 2 rings, and Home Assistant endpoints per employee</p>
+          </div>
+          <button onclick="openAssignDeviceModal()" class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold flex items-center space-x-2 transition shadow">
+            <i data-lucide="cpu" class="w-4 h-4"></i>
+            <span>Assign Hardware to User</span>
+          </button>
+        </div>
+
+        <div id="admin-device-matrix" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+          <!-- Device cards dynamically injected -->
+        </div>
+      </div>
+
+      <!-- Team Capacity & Burnout Heatmap -->
+      <div class="glass rounded-3xl border border-slate-800 p-6 space-y-4">
+        <h3 class="text-lg font-bold text-slate-100 flex items-center space-x-2">
+          <i data-lucide="bar-chart-3" class="w-5 h-5 text-emerald-400"></i>
+          <span>Team Workload & Energy Capacity Matrix</span>
+        </h3>
+        <p class="text-xs text-slate-400">Motion & Monday-level real-time team capacity tracking factoring RingConn recovery readiness</p>
+        <div id="admin-capacity-list" class="space-y-3 pt-2"></div>
+      </div>
+
+    </section>
+
   </main>
 
   <!-- AI Executive Assistant Drawer -->
@@ -475,17 +548,99 @@
     <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-3 text-sm">
       <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700 text-slate-200 text-xs">
         <p class="font-semibold text-indigo-400 mb-1">Plexi Chief of Staff Ready</p>
-        I am monitoring your schedule, calendar events, and task queues. How can I optimize your day?
+        I am monitoring your schedule, team workloads, and task queues. How can I optimize your day?
       </div>
     </div>
     <div class="p-4 border-t border-slate-800 bg-slate-950/50 space-y-2">
       <div class="flex space-x-2">
-        <input id="chat-input" type="text" placeholder="e.g. Auto-schedule my tasks for today..." 
+        <input id="chat-input" type="text" placeholder="e.g. Check team capacity and re-balance tasks..." 
                class="flex-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
                onkeydown="if(event.key === 'Enter') sendChatMessage()">
         <button onclick="sendChatMessage()" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition">
           <i data-lucide="send" class="w-4 h-4"></i>
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Provision New Member -->
+  <div id="modal-add-user" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div class="glass max-w-md w-full rounded-2xl p-6 border border-slate-800 space-y-4">
+      <h3 class="font-bold text-lg text-slate-100">Provision Team Member</h3>
+      <div class="space-y-3">
+        <div>
+          <label class="text-xs text-slate-400">Full Name</label>
+          <input id="new-user-name" type="text" placeholder="e.g. Alex Mercer" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+        </div>
+        <div>
+          <label class="text-xs text-slate-400">Email Address</label>
+          <input id="new-user-email" type="text" placeholder="alex@company.com" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+        </div>
+        <div>
+          <label class="text-xs text-slate-400">Initial Password</label>
+          <input id="new-user-pass" type="password" placeholder="••••••••••••" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs text-slate-400">Role</label>
+            <select id="new-user-role" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+              <option value="member">Member</option>
+              <option value="manager">Manager</option>
+              <option value="admin">Administrator</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs text-slate-400">Department</label>
+            <input id="new-user-dept" type="text" value="Engineering" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs text-slate-400">Daily Capacity (Mins)</label>
+            <input id="new-user-cap" type="number" value="480" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+          </div>
+          <div>
+            <label class="text-xs text-slate-400">Timezone</label>
+            <input id="new-user-tz" type="text" value="America/New_York" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-end space-x-3 pt-3">
+        <button onclick="closeModal('modal-add-user')" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-sm">Cancel</button>
+        <button onclick="submitAddUser()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold">Provision Member</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Assign Hardware / Wearable -->
+  <div id="modal-assign-device" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div class="glass max-w-md w-full rounded-2xl p-6 border border-slate-800 space-y-4">
+      <h3 class="font-bold text-lg text-slate-100">Assign Hardware / Wearable to User</h3>
+      <div class="space-y-3">
+        <div>
+          <label class="text-xs text-slate-400">Select User</label>
+          <select id="assign-device-user" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100"></select>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400">Device / Hardware Type</label>
+          <select id="assign-device-provider" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+            <option value="pavlok">Pavlok 3 Haptic Wristband</option>
+            <option value="ringconn">RingConn Gen 2 Air Smart Ring</option>
+            <option value="home_assistant">Home Assistant Office Integration</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400">Device Label / Serial Number</label>
+          <input id="assign-device-label" type="text" placeholder="e.g. Pavlok 3 #04 - Alex" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+        </div>
+        <div>
+          <label class="text-xs text-slate-400">API Key / Token / Endpoint</label>
+          <input id="assign-device-key" type="password" placeholder="Enter hardware API key or token" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100">
+        </div>
+      </div>
+      <div class="flex justify-end space-x-3 pt-3">
+        <button onclick="closeModal('modal-assign-device')" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-sm">Cancel</button>
+        <button onclick="submitAssignDevice()" class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-sm font-semibold">Assign Device</button>
       </div>
     </div>
   </div>
