@@ -31,21 +31,33 @@ echo -e "${BLUE}================================================================
 
 # 1. Root & Sudo Handling
 SUDO=""
-if [ "$(id -u)" -ne 0 ]; then
+CURRENT_USER="$(whoami)"
+CURRENT_UID="$(id -u)"
+CURRENT_GID="$(id -g)"
+
+if [ "$CURRENT_UID" -ne 0 ]; then
     if command -v sudo >/dev/null 2>&1; then
         SUDO="sudo"
     else
-        echo -e "${RED}Error: Root privileges or sudo required to install dependencies.${NC}"
+        echo -e "${RED}Error: Root privileges or sudo required to install dependencies to /opt/plexi.${NC}"
         exit 1
     fi
 fi
 
-# 2. Determine Install Directory
-INSTALL_DIR="${PLEXI_DIR:-$HOME/.plexi}"
+# 2. Determine Install Directory (Default: /opt/plexi)
+INSTALL_DIR="${PLEXI_DIR:-/opt/plexi}"
 REPO_URL="https://github.com/alteredgenome/plexi.ai.git"
 TARBALL_URL="https://github.com/alteredgenome/plexi.ai/archive/refs/heads/main.tar.gz"
 
 echo -e "${CYAN}==>${NC} Installation target directory: ${BOLD}${INSTALL_DIR}${NC}"
+
+# Ensure /opt/plexi exists and has correct ownership
+if [ "$CURRENT_UID" -eq 0 ]; then
+    mkdir -p "$INSTALL_DIR"
+else
+    $SUDO mkdir -p "$INSTALL_DIR"
+    $SUDO chown -R "${CURRENT_UID}:${CURRENT_GID}" "$INSTALL_DIR"
+fi
 
 # 3. Check and Install System Dependencies
 echo -e "${CYAN}==>${NC} Checking and installing system packages (Python 3, venv, git, curl)..."
@@ -66,8 +78,7 @@ elif command -v brew >/dev/null 2>&1; then
 fi
 
 # 4. Clone or Download Plexi Codebase
-echo -e "${CYAN}==>${NC} Fetching latest Plexi release..."
-mkdir -p "$INSTALL_DIR"
+echo -e "${CYAN}==>${NC} Fetching latest Plexi release into ${INSTALL_DIR}..."
 
 if command -v git >/dev/null 2>&1; then
     if [ -d "$INSTALL_DIR/.git" ]; then
@@ -118,16 +129,17 @@ OPENROUTER_MODEL="google/gemma-2-9b-it:free"
 ENVFILE
 fi
 
-# 8. Create Systemd Service (Optional helper for system installations)
-if [ -d "/etc/systemd/system" ] && [ "$(id -u)" -eq 0 ]; then
-    cat << SYSTEMD > /etc/systemd/system/plexi.service
+# 8. Create Systemd Service
+if [ -d "/etc/systemd/system" ]; then
+    echo -e "${CYAN}==>${NC} Configuring systemd service (/etc/systemd/system/plexi.service)..."
+    $SUDO tee /etc/systemd/system/plexi.service > /dev/null << SYSTEMD
 [Unit]
 Description=Plexi AI Executive Assistant
 After=network.target
 
 [Service]
 Type=simple
-User=root
+User=${CURRENT_USER}
 WorkingDirectory=${INSTALL_DIR}
 ExecStart=${INSTALL_DIR}/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
 Restart=always
@@ -137,26 +149,20 @@ EnvironmentFile=-${INSTALL_DIR}/.env
 [Install]
 WantedBy=multi-user.target
 SYSTEMD
-    systemctl daemon-reload || true
-    systemctl enable plexi || true
-    systemctl restart plexi || true
-    echo -e "${GREEN}${BOLD}✔ Systemd service 'plexi' installed and started!${NC}"
+    $SUDO systemctl daemon-reload || true
+    $SUDO systemctl enable plexi || true
+    $SUDO systemctl restart plexi || true
+    echo -e "${GREEN}${BOLD}✔ Systemd service 'plexi' enabled and started!${NC}"
 fi
 
 # 9. Completion Message
 echo -e "\n${GREEN}${BOLD}================================================================${NC}"
-echo -e "${GREEN}${BOLD}   ✔ Plexi AI Installation Complete!${NC}"
+echo -e "${GREEN}${BOLD}   ✔ Plexi AI Installation to /opt/plexi Complete!${NC}"
 echo -e "${GREEN}${BOLD}================================================================${NC}\n"
 
-echo -e "${BOLD}To run Plexi manually:${NC}"
-echo -e "  cd ${INSTALL_DIR}"
-echo -e "  .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2\n"
-
-if [ -d "/etc/systemd/system" ] && [ "$(id -u)" -eq 0 ]; then
-echo -e "${BOLD}Systemd Service Commands:${NC}"
-echo -e "  systemctl status plexi"
-echo -e "  systemctl restart plexi\n"
-fi
+echo -e "${BOLD}Installation Path:${NC} ${INSTALL_DIR}"
+echo -e "${BOLD}Systemd Service:${NC}   systemctl status plexi"
+echo -e "${BOLD}Service Logs:${NC}      journalctl -u plexi -f\n"
 
 echo -e "${BOLD}Access your Plexi instance in your browser:${NC}"
 echo -e "  🌐 Setup Wizard & Dashboard: ${CYAN}${BOLD}http://<your-server-ip>:8000${NC} (or ${CYAN}http://localhost:8000${NC})"
