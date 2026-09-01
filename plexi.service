@@ -1,0 +1,15 @@
+[Unit]
+Description=Plexi AI Executive Assistant & Daily Planner
+After=network.target
+
+[Service]
+Type=simple
+User=%I
+WorkingDirectory=/opt/plexi
+ExecStart=/opt/plexi/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+Restart=always
+RestartSec=5
+EnvironmentFile=-/opt/plexi/.env
+
+[Install]
+WantedBy=multi-user.target

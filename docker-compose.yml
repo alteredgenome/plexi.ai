@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  plexi:
+    build: .
+    container_name: plexi-ai
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///./plexi.db
+      - SECRET_KEY=${SECRET_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - HOME_ASSISTANT_URL=${HOME_ASSISTANT_URL:-http://homeassistant.local:8123}
+      - HOME_ASSISTANT_TOKEN=${HOME_ASSISTANT_TOKEN:-}
+      - PAVLOK_API_KEY=${PAVLOK_API_KEY:-}
+    volumes:
+      - plexi-data:/app
+
+volumes:
+  plexi-data:
