@@ -17,7 +17,7 @@ function showToast(msg) {
   setTimeout(() => {
     toast.classList.add("opacity-0", "pointer-events-none");
     toast.classList.remove("opacity-100");
-  }, 3000);
+  }, 4000);
 }
 
 // 1. Setup Wizard & Auth Check
@@ -34,7 +34,6 @@ async function checkSetupOrAuth() {
     }
 
     if (!currentToken) {
-      // Prompt login or use existing session
       promptLoginModal();
     } else {
       await loadDashboardData();
@@ -47,11 +46,12 @@ async function checkSetupOrAuth() {
 // Setup Wizard Stepper
 function goToWizardStep(stepNum) {
   document.querySelectorAll(".wizard-step").forEach(el => el.classList.add("hidden"));
-  document.getElementById(`wizard-step-${stepNum}`).classList.remove("hidden");
+  const targetStep = document.getElementById(`wizard-step-${stepNum}`);
+  if (targetStep) targetStep.classList.remove("hidden");
 
-  // Update indicators
   for (let i = 1; i <= 3; i++) {
     const ind = document.getElementById(`step-ind-${i}`);
+    if (!ind) continue;
     if (i === stepNum) {
       ind.className = "text-indigo-400 font-semibold";
     } else if (i < stepNum) {
@@ -64,21 +64,27 @@ function goToWizardStep(stepNum) {
 }
 
 async function submitSetupWizard() {
-  const name = document.getElementById("wiz-admin-name").value.trim();
-  const email = document.getElementById("wiz-admin-email").value.trim();
-  const pass = document.getElementById("wiz-admin-pass").value;
-  const startH = parseInt(document.getElementById("wiz-work-start").value) || 9;
-  const endH = parseInt(document.getElementById("wiz-work-end").value) || 18;
+  const nameInput = document.getElementById("wiz-admin-name");
+  const emailInput = document.getElementById("wiz-admin-email");
+  const passInput = document.getElementById("wiz-admin-pass");
+  const startInput = document.getElementById("wiz-work-start");
+  const endInput = document.getElementById("wiz-work-end");
 
-  const openrouterKey = document.getElementById("wiz-openrouter-key").value.trim();
-  const openrouterModel = document.getElementById("wiz-openrouter-model").value;
+  const name = nameInput ? nameInput.value.trim() : "";
+  const email = emailInput ? emailInput.value.trim() : "";
+  const pass = passInput ? passInput.value : "";
+  const startH = startInput ? (parseInt(startInput.value) || 9) : 9;
+  const endH = endInput ? (parseInt(endInput.value) || 18) : 18;
 
-  const haUrl = document.getElementById("wiz-ha-url").value.trim();
-  const haToken = document.getElementById("wiz-ha-token").value.trim();
-  const pavlokKey = document.getElementById("wiz-pavlok-key").value.trim();
+  const openrouterKey = document.getElementById("wiz-openrouter-key") ? document.getElementById("wiz-openrouter-key").value.trim() : "";
+  const openrouterModel = document.getElementById("wiz-openrouter-model") ? document.getElementById("wiz-openrouter-model").value : "google/gemma-2-9b-it:free";
 
-  if (!email || !pass || !name) {
-    showToast("Please provide name, email, and master password.");
+  const haUrl = document.getElementById("wiz-ha-url") ? document.getElementById("wiz-ha-url").value.trim() : "";
+  const haToken = document.getElementById("wiz-ha-token") ? document.getElementById("wiz-ha-token").value.trim() : "";
+  const pavlokKey = document.getElementById("wiz-pavlok-key") ? document.getElementById("wiz-pavlok-key").value.trim() : "";
+
+  if (!name || !email || !pass) {
+    showToast("Please provide administrator name, email, and master password.");
     goToWizardStep(1);
     return;
   }
@@ -105,7 +111,13 @@ async function submitSetupWizard() {
 
     if (!resp.ok) {
       const err = await resp.json();
-      showToast(`Setup error: ${err.detail || 'Unknown error'}`);
+      let errorMsg = "Setup initialization failed.";
+      if (typeof err.detail === "string") {
+        errorMsg = err.detail;
+      } else if (Array.isArray(err.detail) && err.detail.length > 0) {
+        errorMsg = err.detail[0].msg || err.detail[0].message || JSON.stringify(err.detail[0]);
+      }
+      showToast(`Error: ${errorMsg}`);
       return;
     }
 
@@ -114,19 +126,21 @@ async function submitSetupWizard() {
     localStorage.setItem("plexi_token", currentToken);
 
     document.getElementById("setup-wizard-overlay").classList.add("hidden");
-    showToast("Plexi successfully initialized!");
+    showToast("Plexi successfully initialized! Welcome.");
 
     await loadDashboardData();
   } catch (e) {
-    showToast("Failed to initialize setup.");
+    console.error("Setup error:", e);
+    showToast("Network error connecting to setup API.");
   }
 }
 
 function promptLoginModal() {
-  // If demo/dev environment, fallback
-  const email = prompt("Enter your Plexi email:") || "admin@plexi.local";
-  const pass = prompt("Enter your master password:") || "password123";
+  const email = prompt("Plexi Master Login\nEnter email:") || "admin@plexi.local";
+  const pass = prompt("Enter master password:") || "";
   
+  if (!pass) return;
+
   const formData = new URLSearchParams();
   formData.append("username", email);
   formData.append("password", pass);
@@ -139,6 +153,7 @@ function promptLoginModal() {
     if (data.access_token) {
       currentToken = data.access_token;
       localStorage.setItem("plexi_token", currentToken);
+      showToast("Logged in successfully!");
       loadDashboardData();
     } else {
       showToast("Authentication failed.");
@@ -191,52 +206,57 @@ async function loadAgenda() {
     const tasks = await taskResp.json();
 
     const container = document.getElementById("timeline-container");
+    if (!container) return;
     container.innerHTML = "";
 
     let timelineItems = [];
 
-    events.forEach(ev => {
-      const s = new Date(ev.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const e = new Date(ev.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      
-      if (ev.travel_buffer_before_minutes > 0) {
-        timelineItems.push({
-          time: `${s} (-${ev.travel_buffer_before_minutes}m)`,
-          title: `Buffer: Travel & Preparation (${ev.title})`,
-          badge: 'Travel Buffer',
-          badgeColor: 'amber'
-        });
-      }
+    if (Array.isArray(events)) {
+      events.forEach(ev => {
+        const s = new Date(ev.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const e = new Date(ev.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        if (ev.travel_buffer_before_minutes > 0) {
+          timelineItems.push({
+            time: `${s} (-${ev.travel_buffer_before_minutes}m)`,
+            title: `Buffer: Travel & Preparation (${ev.title})`,
+            badge: 'Travel Buffer',
+            badgeColor: 'amber'
+          });
+        }
 
-      timelineItems.push({
-        time: `${s} - ${e}`,
-        title: ev.title,
-        badge: 'Fixed Event',
-        badgeColor: 'indigo'
-      });
-
-      if (ev.recovery_buffer_after_minutes > 0) {
-        timelineItems.push({
-          time: `${e} (+${ev.recovery_buffer_after_minutes}m)`,
-          title: `Buffer: Mental Recovery & Reset (${ev.title})`,
-          badge: 'Recovery Window',
-          badgeColor: 'amber'
-        });
-      }
-    });
-
-    tasks.forEach(t => {
-      if (t.scheduled_start) {
-        const s = new Date(t.scheduled_start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const e = new Date(t.scheduled_end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         timelineItems.push({
           time: `${s} - ${e}`,
-          title: `Task: ${t.title}`,
-          badge: `Auto-Scheduled [${t.priority}]`,
-          badgeColor: t.momentum_critical ? 'rose' : 'emerald'
+          title: ev.title,
+          badge: 'Fixed Event',
+          badgeColor: 'indigo'
         });
-      }
-    });
+
+        if (ev.recovery_buffer_after_minutes > 0) {
+          timelineItems.push({
+            time: `${e} (+${ev.recovery_buffer_after_minutes}m)`,
+            title: `Buffer: Mental Recovery & Reset (${ev.title})`,
+            badge: 'Recovery Window',
+            badgeColor: 'amber'
+          });
+        }
+      });
+    }
+
+    if (Array.isArray(tasks)) {
+      tasks.forEach(t => {
+        if (t.scheduled_start) {
+          const s = new Date(t.scheduled_start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const e = new Date(t.scheduled_end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          timelineItems.push({
+            time: `${s} - ${e}`,
+            title: `Task: ${t.title}`,
+            badge: `Auto-Scheduled [${t.priority}]`,
+            badgeColor: t.momentum_critical ? 'rose' : 'emerald'
+          });
+        }
+      });
+    }
 
     if (timelineItems.length === 0) {
       container.innerHTML = `<div class="text-xs text-slate-500 py-4">No scheduled events yet. Click 'Auto-Schedule Day' to optimize.</div>`;
@@ -307,50 +327,54 @@ async function loadProjects() {
   const p3List = document.getElementById("p3-task-list");
   const p4List = document.getElementById("p4-task-list");
 
+  if (!p1List || !p3List || !p4List) return;
+
   p1List.innerHTML = "";
   p3List.innerHTML = "";
   p4List.innerHTML = "";
 
   let c1 = 0, c3 = 0, c4 = 0;
 
-  tasks.forEach(t => {
-    const card = document.createElement("div");
-    card.className = "p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition space-y-2";
-    
-    const momentumBadge = t.momentum_critical 
-      ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800">⚡ Pavlok Linked</span>`
-      : "";
+  if (Array.isArray(tasks)) {
+    tasks.forEach(t => {
+      const card = document.createElement("div");
+      card.className = "p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition space-y-2";
+      
+      const momentumBadge = t.momentum_critical 
+        ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800">⚡ Pavlok Linked</span>`
+        : "";
 
-    const statusBadge = t.is_completed 
-      ? `<span class="text-[10px] text-emerald-400">✓ Done</span>`
-      : `<span class="text-[10px] text-slate-400">${t.duration_minutes} mins</span>`;
+      const statusBadge = t.is_completed 
+        ? `<span class="text-[10px] text-emerald-400">✓ Done</span>`
+        : `<span class="text-[10px] text-slate-400">${t.duration_minutes} mins</span>`;
 
-    card.innerHTML = `
-      <div class="flex items-center justify-between">
-        <span class="text-xs font-semibold text-indigo-400">[${t.priority}]</span>
-        ${statusBadge}
-      </div>
-      <div class="text-sm font-medium text-slate-200">${t.title}</div>
-      ${t.sop_template ? `<div class="text-xs text-slate-400 bg-slate-950/50 p-2 rounded border border-slate-800/80 mono whitespace-pre-line">${t.sop_template}</div>` : ''}
-      <div class="flex items-center justify-between pt-1">
-        ${momentumBadge}
-        <button onclick="toggleTaskDone(${t.id}, ${!t.is_completed})" class="text-xs text-slate-400 hover:text-emerald-400 transition">
-          ${t.is_completed ? "Reopen" : "Mark Complete"}
-        </button>
-      </div>
-    `;
+      card.innerHTML = `
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-indigo-400">[${t.priority}]</span>
+          ${statusBadge}
+        </div>
+        <div class="text-sm font-medium text-slate-200">${t.title}</div>
+        ${t.sop_template ? `<div class="text-xs text-slate-400 bg-slate-950/50 p-2 rounded border border-slate-800/80 mono whitespace-pre-line">${t.sop_template}</div>` : ''}
+        <div class="flex items-center justify-between pt-1">
+          ${momentumBadge}
+          <button onclick="toggleTaskDone(${t.id}, ${!t.is_completed})" class="text-xs text-slate-400 hover:text-emerald-400 transition">
+            ${t.is_completed ? "Reopen" : "Mark Complete"}
+          </button>
+        </div>
+      `;
 
-    if (t.priority === "P1" || t.priority === "P2") {
-      p1List.appendChild(card);
-      c1++;
-    } else if (t.priority === "P3") {
-      p3List.appendChild(card);
-      c3++;
-    } else {
-      p4List.appendChild(card);
-      c4++;
-    }
-  });
+      if (t.priority === "P1" || t.priority === "P2") {
+        p1List.appendChild(card);
+        c1++;
+      } else if (t.priority === "P3") {
+        p3List.appendChild(card);
+        c3++;
+      } else {
+        p4List.appendChild(card);
+        c4++;
+      }
+    });
+  }
 
   document.getElementById("p1-count").innerText = c1;
   document.getElementById("p3-count").innerText = c3;
@@ -378,7 +402,7 @@ async function loadFinance() {
   const headers = { "Authorization": `Bearer ${currentToken}` };
   const hhResp = await fetch("/api/v1/finance/households", { headers });
   const hhs = await hhResp.json();
-  if (hhs.length === 0) return;
+  if (!Array.isArray(hhs) || hhs.length === 0) return;
 
   const hhId = hhs[0].id;
   currentHouseholdId = hhId;
@@ -392,48 +416,52 @@ async function loadFinance() {
   const items = await itemsResp.json();
 
   const setList = document.getElementById("settlement-list");
-  setList.innerHTML = "";
-  if (!overview.suggested_settlements || overview.suggested_settlements.length === 0) {
-    setList.innerHTML = `<div class="text-xs text-slate-400 col-span-2">All balances are currently settled!</div>`;
-  } else {
-    overview.suggested_settlements.forEach(s => {
-      const card = document.createElement("div");
-      card.className = "p-3 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-between";
-      card.innerHTML = `
-        <div>
-          <span class="text-xs font-medium text-rose-400">${s.from_user_name}</span>
-          <span class="text-xs text-slate-400"> pays </span>
-          <span class="text-xs font-medium text-emerald-400">${s.to_user_name}</span>
-        </div>
-        <div class="text-sm font-bold text-slate-100">$${s.amount.toFixed(2)}</div>
-      `;
-      setList.appendChild(card);
-    });
+  if (setList) {
+    setList.innerHTML = "";
+    if (!overview.suggested_settlements || overview.suggested_settlements.length === 0) {
+      setList.innerHTML = `<div class="text-xs text-slate-400 col-span-2">All balances are currently settled!</div>`;
+    } else {
+      overview.suggested_settlements.forEach(s => {
+        const card = document.createElement("div");
+        card.className = "p-3 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-between";
+        card.innerHTML = `
+          <div>
+            <span class="text-xs font-medium text-rose-400">${s.from_user_name}</span>
+            <span class="text-xs text-slate-400"> pays </span>
+            <span class="text-xs font-medium text-emerald-400">${s.to_user_name}</span>
+          </div>
+          <div class="text-sm font-bold text-slate-100">$${s.amount.toFixed(2)}</div>
+        `;
+        setList.appendChild(card);
+      });
+    }
   }
 
   const tbody = document.getElementById("ledger-table-body");
-  tbody.innerHTML = "";
-  items.forEach(item => {
-    const tr = document.createElement("tr");
-    tr.className = "hover:bg-slate-900/50";
-    tr.innerHTML = `
-      <td class="px-6 py-4 font-medium text-slate-200">${item.title}</td>
-      <td class="px-6 py-4 text-slate-400 capitalize">${item.category}</td>
-      <td class="px-6 py-4 font-semibold text-slate-100">$${item.total_amount.toFixed(2)}</td>
-      <td class="px-6 py-4 text-slate-400 capitalize">${item.split_type}</td>
-      <td class="px-6 py-4">
-        ${item.is_settled 
-          ? `<span class="px-2 py-0.5 rounded-full text-xs bg-emerald-950 text-emerald-300 border border-emerald-800">Settled</span>`
-          : `<span class="px-2 py-0.5 rounded-full text-xs bg-amber-950 text-amber-300 border border-amber-800">Unsettled</span>`}
-      </td>
-      <td class="px-6 py-4 text-right">
-        ${!item.is_settled 
-          ? `<button onclick="settleItem(${item.id})" class="text-xs text-indigo-400 hover:text-indigo-300">Settle</button>`
-          : `<span class="text-xs text-slate-500">Archived</span>`}
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
+  if (tbody && Array.isArray(items)) {
+    tbody.innerHTML = "";
+    items.forEach(item => {
+      const tr = document.createElement("tr");
+      tr.className = "hover:bg-slate-900/50";
+      tr.innerHTML = `
+        <td class="px-6 py-4 font-medium text-slate-200">${item.title}</td>
+        <td class="px-6 py-4 text-slate-400 capitalize">${item.category}</td>
+        <td class="px-6 py-4 font-semibold text-slate-100">$${item.total_amount.toFixed(2)}</td>
+        <td class="px-6 py-4 text-slate-400 capitalize">${item.split_type}</td>
+        <td class="px-6 py-4">
+          ${item.is_settled 
+            ? `<span class="px-2 py-0.5 rounded-full text-xs bg-emerald-950 text-emerald-300 border border-emerald-800">Settled</span>`
+            : `<span class="px-2 py-0.5 rounded-full text-xs bg-amber-950 text-amber-300 border border-amber-800">Unsettled</span>`}
+        </td>
+        <td class="px-6 py-4 text-right">
+          ${!item.is_settled 
+            ? `<button onclick="settleItem(${item.id})" class="text-xs text-indigo-400 hover:text-indigo-300">Settle</button>`
+            : `<span class="text-xs text-slate-500">Archived</span>`}
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
 }
 
 async function settleItem(itemId) {
@@ -451,14 +479,18 @@ async function loadBiometrics() {
     const resp = await fetch("/api/v1/biometrics/capacity-evaluation", { headers });
     const data = await resp.json();
 
-    document.getElementById("readiness-badge").innerText = `${Math.round(data.readiness_score)}% ${data.recovery_status.toUpperCase()}`;
-    document.getElementById("readiness-desc").innerText = `${data.recommendation} Daily Capacity: ${data.adjusted_capacity_minutes}m (Scale: ${(data.fatigue_scaling_factor * 100).toFixed(0)}%).`;
+    const badge = document.getElementById("readiness-badge");
+    const desc = document.getElementById("readiness-desc");
+    if (badge) badge.innerText = `${Math.round(data.readiness_score)}% ${data.recovery_status.toUpperCase()}`;
+    if (desc) desc.innerText = `${data.recommendation} Daily Capacity: ${data.adjusted_capacity_minutes}m (Scale: ${(data.fatigue_scaling_factor * 100).toFixed(0)}%).`;
   } catch (e) {}
 }
 
 function updateBioPreview() {
-  document.getElementById("bio-sleep-val").innerText = document.getElementById("bio-sleep-input").value;
-  document.getElementById("bio-readiness-val").innerText = document.getElementById("bio-readiness-input").value;
+  const sleepIn = document.getElementById("bio-sleep-input");
+  const readIn = document.getElementById("bio-readiness-input");
+  if (sleepIn) document.getElementById("bio-sleep-val").innerText = sleepIn.value;
+  if (readIn) document.getElementById("bio-readiness-val").innerText = readIn.value;
 }
 
 async function submitBiometrics() {
@@ -516,11 +548,12 @@ async function sendPavlokNudge(type, intensity) {
 // AI Assistant Drawer & Chat
 function toggleAssistantDrawer() {
   const drawer = document.getElementById("assistant-drawer");
-  drawer.classList.toggle("translate-x-full");
+  if (drawer) drawer.classList.toggle("translate-x-full");
 }
 
 async function sendChatMessage() {
   const input = document.getElementById("chat-input");
+  if (!input) return;
   const text = input.value.trim();
   if (!text) return;
 

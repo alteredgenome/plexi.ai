@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, field_validator
 from typing import Optional, Dict, Any
 
 class SetupStatus(BaseModel):
@@ -8,7 +8,7 @@ class SetupStatus(BaseModel):
     admin_exists: bool
 
 class SetupWizardRequest(BaseModel):
-    admin_email: EmailStr
+    admin_email: str
     admin_password: str
     admin_name: str
     timezone: str = "America/New_York"
@@ -26,6 +26,29 @@ class SetupWizardRequest(BaseModel):
     
     # Optional Pavlok Config
     pavlok_api_key: Optional[str] = None
+
+    @field_validator("admin_email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        v = v.strip().lower()
+        if not v or "@" not in v:
+            raise ValueError("Please provide a valid email address.")
+        return v
+
+    @field_validator("admin_name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Administrator name cannot be empty.")
+        return v
+
+    @field_validator("admin_password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if len(v) < 6:
+            raise ValueError("Password must be at least 6 characters long.")
+        return v
 
 class SetupWizardResponse(BaseModel):
     status: str

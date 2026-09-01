@@ -39,9 +39,9 @@ async def run_setup_wizard(payload: SetupWizardRequest, db: AsyncSession = Depen
     - Configures OpenRouter, Home Assistant, and Pavlok credentials
     - Locks setup to prevent re-initialization
     """
-    # Verify setup is not already completed
-    status_check = await get_setup_status(db)
-    if status_check.is_setup_completed:
+    # Check if an admin user already exists
+    user_count_res = await db.execute(select(User))
+    if len(user_count_res.scalars().all()) > 0:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Plexi instance is already configured. Please log in."
@@ -49,9 +49,9 @@ async def run_setup_wizard(payload: SetupWizardRequest, db: AsyncSession = Depen
 
     # 1. Create Admin User
     admin = User(
-        email=payload.admin_email,
+        email=payload.admin_email.strip().lower(),
         hashed_password=hash_password(payload.admin_password),
-        full_name=payload.admin_name,
+        full_name=payload.admin_name.strip(),
         is_admin=True,
         timezone=payload.timezone,
         work_start_hour=payload.work_start_hour,
@@ -80,25 +80,25 @@ async def run_setup_wizard(payload: SetupWizardRequest, db: AsyncSession = Depen
     db.add(member)
 
     # 4. Store Optional Integration Credentials
-    if payload.openrouter_api_key:
+    if payload.openrouter_api_key and payload.openrouter_api_key.strip():
         db.add(IntegrationCredential(
             user_id=admin.id,
             provider="openrouter",
-            credentials_json={"api_key": payload.openrouter_api_key, "model": payload.openrouter_model or "google/gemma-2-9b-it:free"}
+            credentials_json={"api_key": payload.openrouter_api_key.strip(), "model": payload.openrouter_model or "google/gemma-2-9b-it:free"}
         ))
 
-    if payload.home_assistant_token:
+    if payload.home_assistant_token and payload.home_assistant_token.strip():
         db.add(IntegrationCredential(
             user_id=admin.id,
             provider="home_assistant",
-            credentials_json={"base_url": payload.home_assistant_url or "http://homeassistant.local:8123", "token": payload.home_assistant_token}
+            credentials_json={"base_url": payload.home_assistant_url or "http://homeassistant.local:8123", "token": payload.home_assistant_token.strip()}
         ))
 
-    if payload.pavlok_api_key:
+    if payload.pavlok_api_key and payload.pavlok_api_key.strip():
         db.add(IntegrationCredential(
             user_id=admin.id,
             provider="pavlok",
-            credentials_json={"api_key": payload.pavlok_api_key}
+            credentials_json={"api_key": payload.pavlok_api_key.strip()}
         ))
 
     # 5. Lock Setup
