@@ -9,5 +9,5 @@ This repository contains the landing page, documentation, and installation scrip
 ## Usage
 To install Plexi:
 ```bash
-curl -fsSL https://alteredgenome.github.io/plexi.ai/install.sh | bash
+curl -fsSL https://plexi.fyi/install.sh | bash
 ```

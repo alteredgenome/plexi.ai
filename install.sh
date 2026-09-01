@@ -2,7 +2,7 @@
 # ==============================================================================
 # Plexi AI (plexi.ai / plexi.fyi) - Robust Single-Line Automated Installer
 # Usage:
-#   curl -fsSL https://alteredgenome.github.io/plexi.ai/install.sh | bash
+#   curl -fsSL https://plexi.fyi/install.sh | bash
 #   curl -fsSL https://plexi.fyi/install.sh | bash
 # ==============================================================================
 
